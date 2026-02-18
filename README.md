@@ -2,8 +2,11 @@
 
 [![CI/CD](https://github.com/tdevere/ai-customer-support/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/tdevere/ai-customer-support/actions/workflows/ci-cd.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Security](https://img.shields.io/badge/security-patched-green.svg)](./SECURITY_ADVISORY.md)
 
 A production-ready, plug-and-play **Adaptive Agent Network (AAN)** that augments **Intercom + Fin AI Agent** for specialized customer support. This system handles 70-80% of simple queries automatically via Fin, with AAN activating for topic-specialist needs, low-confidence outputs, or complex multi-topic cases.
+
+> **🔒 Security Update (2024-02-18)**: All LangChain vulnerabilities patched. See [SECURITY_ADVISORY.md](./SECURITY_ADVISORY.md) for details.
 
 ## 🚀 Features
 
