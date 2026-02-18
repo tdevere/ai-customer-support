@@ -1,0 +1,72 @@
+"""
+Agent registry configuration.
+Maps topics to specialist agents with their configurations.
+"""
+
+registry:
+  billing:
+    name: "Billing Specialist"
+    description: "Handles billing inquiries, subscriptions, invoices, and payment issues"
+    module: "agents.billing_agent"
+    agent_name: "billing_agent"
+    enabled: true
+    tools:
+      - get_customer_info
+      - get_invoice
+      - list_customer_invoices
+      - get_subscription
+      - cancel_subscription
+      - create_payment_intent
+    rag_index: "support_knowledge"
+    keywords:
+      - billing
+      - invoice
+      - payment
+      - subscription
+      - charge
+      - refund
+      - credit card
+      - transaction
+  
+  technical:
+    name: "Technical Support Specialist"
+    description: "Handles technical issues, bugs, feature requests, and documentation"
+    module: "agents.tech_agent"
+    agent_name: "tech_agent"
+    enabled: true
+    tools:
+      - create_jira_ticket
+      - search_jira_tickets
+      - get_jira_ticket
+    rag_index: "support_knowledge"
+    keywords:
+      - bug
+      - error
+      - technical
+      - not working
+      - crash
+      - issue
+      - feature
+      - api
+      - integration
+  
+  returns:
+    name: "Returns Specialist"
+    description: "Handles order returns, refunds, and return policy questions"
+    module: "agents.returns_agent"
+    agent_name: "returns_agent"
+    enabled: true
+    tools:
+      - get_order
+      - search_orders
+      - check_return_eligibility
+      - create_refund
+    rag_index: "support_knowledge"
+    keywords:
+      - return
+      - refund
+      - order
+      - shipping
+      - exchange
+      - damaged
+      - wrong item
