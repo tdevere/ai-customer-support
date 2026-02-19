@@ -3,12 +3,25 @@ Unit tests for the verifier agent.
 """
 
 import pytest
+from unittest.mock import MagicMock
 from orchestrator.verifier import VerifierAgent
 
 
 @pytest.fixture
-def verifier():
-    """Create verifier instance."""
+def verifier(mocker):
+    """Create verifier instance with mocked LLM to avoid real API calls.
+
+    The mock response intentionally omits FINAL_CONFIDENCE so the verifier
+    falls back to agent_confidence — this allows high/low confidence tests
+    to behave correctly with their respective agent_confidence inputs.
+    """
+    mock_response = MagicMock()
+    mock_response.content = (
+        "GROUNDED: yes\nCOMPLETE: yes\nCONCERNS: none\nCRITIQUE: Mocked response"
+    )
+    mock_llm = MagicMock()
+    mock_llm.invoke.return_value = mock_response
+    mocker.patch("orchestrator.verifier.AzureChatOpenAI", return_value=mock_llm)
     return VerifierAgent()
 
 

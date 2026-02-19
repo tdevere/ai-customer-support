@@ -3,12 +3,18 @@ Unit tests for the supervisor/classifier.
 """
 
 import pytest
+from unittest.mock import MagicMock
 from orchestrator.supervisor import TopicClassifier
 
 
 @pytest.fixture
-def classifier():
-    """Create classifier instance."""
+def classifier(mocker):
+    """Create classifier instance with mocked LLM to avoid real API calls."""
+    mock_response = MagicMock()
+    mock_response.content = "PRIMARY: general (0.5)\nSECONDARY:"
+    mock_llm = MagicMock()
+    mock_llm.invoke.return_value = mock_response
+    mocker.patch("orchestrator.supervisor.AzureChatOpenAI", return_value=mock_llm)
     return TopicClassifier()
 
 
