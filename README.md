@@ -287,7 +287,53 @@ result = await run_aan_orchestrator(
 print(result)
 ```
 
-## 📊 Monitoring
+## �️ Roadmap
+
+### ✅ Completed (as of 2026-02-19)
+
+| Capability | Detail |
+|---|---|
+| Multi-agent orchestration | LangGraph graph — classify → route → verify → respond/escalate |
+| Specialist agents | Billing (Stripe), Tech (Jira), Returns (Shopify) |
+| Platform-agnostic REST API | `POST /conversations`, `POST /conversations/{id}/messages`, `GET /conversations/{id}` |
+| Resolution tracking | `in_progress` → `resolved_assumed` / `resolved_confirmed` / `escalated` |
+| Custom-answers override layer | Hard-coded responses that short-circuit the LLM pipeline |
+| Azure Monitor telemetry | OpenTelemetry wrapper — no-op without App Insights |
+| X-Request-ID middleware | Trace ID on every API response |
+| Config-driven agent registry | Add a new specialist in <1 hour via `agents/registry.yaml` |
+| 292 tests / 100% coverage | Coverage gate enforced locally and in CI |
+| mypy type checking | Integrated in CI, Makefile, and `test_local.ps1` |
+| CI/CD hardened | All action versions pinned, Trivy scanning, coverage gate |
+| Dependabot | Weekly pip + GitHub Actions update PRs |
+| Terraform remote state | Azure Blob backend template in `infra/backend.tf` |
+| Local demo mode | Zero Azure credentials — `scripts/demo_local.py` + `demo.ps1` |
+| Docs | README, ARCHITECTURE, DEPLOYMENT, DEMO |
+
+### 🔜 Next — Production Go-Live (~3 hours)
+
+| Step | Owner | Est. time |
+|---|---|---|
+| Fill `local.settings.json` with real Azure creds | You | 1 h |
+| Run `infra/main.tf` (`terraform apply`) | You | 30 min |
+| Seed Azure AI Search knowledge base (`scripts/seed_knowledge_base.py`) | Next build | 2 h |
+| Set `AZURE_CREDENTIALS_DEV` / `AZURE_CREDENTIALS_PROD` GitHub secrets | You | 30 min |
+| Open PR: `copilot/add-adaptive-agent-network` → `main` | You | 5 min |
+
+### 🔭 Future
+
+| Feature | Priority |
+|---|---|
+| `scripts/seed_knowledge_base.py` — load support articles into Azure AI Search | High |
+| End-to-end integration tests against live Azure sandbox | High |
+| Performance benchmarking — validate p95 < 8 s | Medium |
+| Email channel integration (Azure Communication Services) | Medium |
+| Admin dashboard — conversation analytics + resolution rates | Medium |
+| Multi-language support (Azure Translator) | Low |
+| Proactive support (predict issues before customers report) | Low |
+
+---
+
+## �📊 Monitoring
 
 ### Application Insights
 
