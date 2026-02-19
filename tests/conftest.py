@@ -22,6 +22,9 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv("STRIPE_API_KEY", "mock-stripe-key")
     monkeypatch.setenv("JIRA_EMAIL", "mock-jira@example.com")
     monkeypatch.setenv("JIRA_PROJECT_KEY", "SUP")
+    monkeypatch.setenv("SHOPIFY_SHOP_URL", "https://mock.myshopify.com")
+    monkeypatch.setenv("AZURE_OPENAI_DEPLOYMENT_GPT4", "gpt-4o")
+    monkeypatch.setenv("AZURE_OPENAI_DEPLOYMENT_GPT4_MINI", "gpt-4o-mini")
     monkeypatch.setenv("ENVIRONMENT", "test")
 
 

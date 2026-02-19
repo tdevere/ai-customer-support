@@ -11,6 +11,16 @@
     "AZURE_SEARCH_KEY": "",
     "INTERCOM_ACCESS_TOKEN": "",
     "INTERCOM_WEBHOOK_SECRET": "",
+    "SUPPORT_API_KEY": "",
+    "STRIPE_API_KEY": "",
+    "JIRA_BASE_URL": "",
+    "JIRA_EMAIL": "",
+    "JIRA_API_TOKEN": "",
+    "JIRA_PROJECT_KEY": "SUP",
+    "SHOPIFY_SHOP_URL": "",
+    "SHOPIFY_API_KEY": "",
+    "AZURE_OPENAI_DEPLOYMENT_GPT4": "gpt-4o",
+    "AZURE_OPENAI_DEPLOYMENT_GPT4_MINI": "gpt-4o-mini",
     "ENVIRONMENT": "local"
   }
 }

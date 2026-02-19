@@ -17,8 +17,13 @@ class Settings(BaseSettings):
     azure_openai_endpoint: str = os.getenv("AZURE_OPENAI_ENDPOINT", "")
     azure_openai_api_key: str = os.getenv("AZURE_OPENAI_API_KEY", "")
     azure_openai_api_version: str = "2024-02-15-preview"
-    azure_openai_deployment_gpt4: str = "gpt-4o"
-    azure_openai_deployment_gpt4_mini: str = "gpt-4o-mini"
+    # Deployment names vary by Azure subscription — override via env if yours differ.
+    azure_openai_deployment_gpt4: str = os.getenv(
+        "AZURE_OPENAI_DEPLOYMENT_GPT4", "gpt-4o"
+    )
+    azure_openai_deployment_gpt4_mini: str = os.getenv(
+        "AZURE_OPENAI_DEPLOYMENT_GPT4_MINI", "gpt-4o-mini"
+    )
 
     # Azure Cosmos DB
     cosmos_endpoint: str = os.getenv("COSMOS_ENDPOINT", "")
