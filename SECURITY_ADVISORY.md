@@ -45,7 +45,7 @@ To maintain compatibility and security across the LangChain ecosystem:
 - **langchain**: Updated from 0.2.0 → 0.3.15 (fixed langsmith dependency conflict)
 - **langchain-openai**: Updated from 0.1.8 → 0.2.14
 - **langgraph**: Updated from 0.2.0 → 0.2.60
-- **langsmith**: Explicitly pinned to 0.3.81 for compatibility
+- **langsmith**: Auto-resolved by pip (>=0.3.45,<1.0.0 per langchain-core requirements)
 
 ### Other Dependency Updates
 The following dependencies were also updated to their latest stable versions for security and stability:
@@ -94,7 +94,7 @@ pip list | grep langchain
 # langchain-core         0.3.81
 # langchain-openai       0.2.14
 # langgraph              0.2.60
-# langsmith              0.3.81
+# langsmith              0.3.45+ (auto-resolved)
 
 # 2. Run security scan
 pip install safety
