@@ -1,7 +1,5 @@
-"""
-Agent registry configuration.
-Maps topics to specialist agents with their configurations.
-"""
+# Agent registry configuration.
+# Maps topics to specialist agents with their configurations.
 
 registry:
   billing:
