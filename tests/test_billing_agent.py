@@ -138,3 +138,38 @@ def test_billing_agent_unknown_tool_returns_error_in_results(mocker):
     assert len(result["tool_results"]) == 1
     assert "error" in result["tool_results"][0]["result"]
     assert "Unknown tool" in result["tool_results"][0]["result"]["error"]
+
+
+def test_billing_tool_invoke_raises_error_stored(mocker):
+    """When a known tool's invoke() raises, the exception is captured in tool_results."""
+    mock_tool = mocker.MagicMock()
+    mock_tool.name = "get_customer_info"
+    mock_tool.invoke.side_effect = Exception("Stripe connection failed")
+    mocker.patch("agents.billing_agent.stripe_tools", [mock_tool])
+
+    _make_llm_pair(
+        mocker,
+        tool_calls=[{"name": "get_customer_info", "args": {"customer_id": "cust_bad"}}],
+        final_text="An error occurred.\nCONFIDENCE: 0.40",
+    )
+
+    from agents.billing_agent import create_billing_agent
+
+    agent = create_billing_agent()
+    result = agent.invoke(_base_state())
+
+    assert len(result["tool_results"]) == 1
+    assert "error" in result["tool_results"][0]["result"]
+    assert "Stripe connection failed" in result["tool_results"][0]["result"]["error"]
+
+
+def test_billing_confidence_parse_failure_stays_default(mocker):
+    """Non-numeric CONFIDENCE value falls back to 0.5 without crashing."""
+    _make_llm_pair(mocker, final_text="Your invoice is ready.\nCONFIDENCE: high")
+
+    from agents.billing_agent import create_billing_agent
+
+    agent = create_billing_agent()
+    result = agent.invoke(_base_state())
+
+    assert result["confidence"] == pytest.approx(0.5)

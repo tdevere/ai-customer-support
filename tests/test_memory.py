@@ -282,3 +282,126 @@ def test_list_agents_returns_list(mocker):
 
     assert len(agents) == 2
     assert agents[0]["id"] == "billing"
+
+
+# ---------------------------------------------------------------------------
+# client / database properties
+# ---------------------------------------------------------------------------
+
+
+def test_client_property_returns_cosmos_client(mocker):
+    """Accessing the client property triggers connection and returns CosmosClient."""
+    mock_cls, _, _ = _make_mock_cosmos()
+    mocker.patch("shared.memory.CosmosClient", mock_cls)
+
+    from shared.memory import ConversationMemory
+
+    mem = ConversationMemory()
+    client = mem.client
+
+    assert client is not None
+    mock_cls.assert_called_once()
+
+
+def test_database_property_returns_database(mocker):
+    """Accessing the database property triggers connection and returns the database."""
+    mock_cls, _, _ = _make_mock_cosmos()
+    mocker.patch("shared.memory.CosmosClient", mock_cls)
+
+    from shared.memory import ConversationMemory
+
+    mem = ConversationMemory()
+    db = mem.database
+
+    assert db is not None
+    mock_cls.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# delete_state — non-404 error path
+# ---------------------------------------------------------------------------
+
+
+def test_delete_state_non_404_error_handled_silently(mocker):
+    """delete_state silently handles non-404 Cosmos errors (prints, no raise)."""
+    mock_cls, mock_state_cont, _ = _make_mock_cosmos()
+    mocker.patch("shared.memory.CosmosClient", mock_cls)
+    mock_state_cont.delete_item.side_effect = CosmosHttpResponseError(
+        status_code=500, message="Internal Server Error"
+    )
+
+    from shared.memory import ConversationMemory
+
+    mem = ConversationMemory()
+    # Must not raise — just prints and continues
+    mem.delete_state("conv-500")  # no exception expected
+
+
+# ---------------------------------------------------------------------------
+# get_agent_config — non-404 error path
+# ---------------------------------------------------------------------------
+
+
+def test_get_agent_config_non_404_cosmos_error_reraises(mocker):
+    """get_agent_config re-raises non-404 Cosmos errors."""
+    mock_cls, _, mock_reg_cont = _make_mock_cosmos()
+    mocker.patch("shared.memory.CosmosClient", mock_cls)
+    mock_reg_cont.read_item.side_effect = CosmosHttpResponseError(
+        status_code=500, message="Internal Server Error"
+    )
+
+    from shared.memory import ConversationMemory
+
+    mem = ConversationMemory()
+    with pytest.raises(CosmosHttpResponseError):
+        mem.get_agent_config("billing")
+
+
+# ---------------------------------------------------------------------------
+# register_agent — error path
+# ---------------------------------------------------------------------------
+
+
+def test_register_agent_cosmos_error_reraises(mocker):
+    """register_agent re-raises CosmosHttpResponseError from upsert_item."""
+    mock_cls, _, mock_reg_cont = _make_mock_cosmos()
+    mocker.patch("shared.memory.CosmosClient", mock_cls)
+    mock_reg_cont.upsert_item.side_effect = CosmosHttpResponseError(
+        status_code=500, message="Write failed"
+    )
+
+    from shared.memory import ConversationMemory
+
+    mem = ConversationMemory()
+    with pytest.raises(CosmosHttpResponseError):
+        mem.register_agent("billing", {"name": "Billing Agent"})
+
+
+# ---------------------------------------------------------------------------
+# add_feedback
+# ---------------------------------------------------------------------------
+
+
+def test_add_feedback_appends_feedback_and_saves(mocker):
+    """add_feedback loads existing state, appends feedback, and saves updated state."""
+    mock_cls, mock_state_cont, _ = _make_mock_cosmos()
+    mocker.patch("shared.memory.CosmosClient", mock_cls)
+
+    existing_state = {"status": "success", "message": "Done"}
+    mock_state_cont.read_item.return_value = {
+        "id": "conv-fb",
+        "state": existing_state,
+    }
+
+    from shared.memory import ConversationMemory
+
+    mem = ConversationMemory()
+    mem.add_feedback("conv-fb", {"rating": 5, "comment": "Excellent"})
+
+    # upsert_item should have been called with the updated state including feedback
+    assert mock_state_cont.upsert_item.called
+    saved_doc = mock_state_cont.upsert_item.call_args[0][0]
+    feedback_list = saved_doc["state"]["feedback"]
+    assert len(feedback_list) == 1
+    assert feedback_list[0]["rating"] == 5
+    assert "timestamp" in feedback_list[0]

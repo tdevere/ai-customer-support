@@ -340,3 +340,24 @@ async def test_run_aan_orchestrator_error_contains_exception_message():
         result = await run_aan_orchestrator("c", "u", "anything")
 
     assert "model_not_found" in result["error"]
+
+
+# ---------------------------------------------------------------------------
+# decide_after_custom_answers routing function
+# ---------------------------------------------------------------------------
+
+
+def test_decide_after_custom_answers_returns_respond_when_id_set():
+    """Returns 'respond' when the state has a custom_answer_id."""
+    from orchestrator.graph import decide_after_custom_answers
+
+    state = {"custom_answer_id": "faq_pricing", "messages": []}
+    assert decide_after_custom_answers(state) == "respond"
+
+
+def test_decide_after_custom_answers_returns_classify_when_no_id():
+    """Returns 'classify' when the state has no custom_answer_id."""
+    from orchestrator.graph import decide_after_custom_answers
+
+    state = {"custom_answer_id": "", "messages": []}
+    assert decide_after_custom_answers(state) == "classify"

@@ -89,3 +89,41 @@ def test_format_sources(verifier):
     formatted = verifier._format_sources(sources)
     assert isinstance(formatted, str)
     assert "Test" in formatted
+
+
+def test_format_tools_empty_returns_no_tools_used(verifier):
+    """_format_tools returns 'No tools used' when tool_results list is empty."""
+    result = verifier._format_tools([])
+    assert result == "No tools used"
+
+
+def test_parse_verification_with_actual_concerns(verifier):
+    """Actual concerns (not 'none') are parsed into a list."""
+    result = verifier._parse_verification(
+        "GROUNDED: partial\nCOMPLETE: no\nCONCERNS: missing data, unclear response\nCRITIQUE: Needs work",
+        agent_confidence=0.6,
+    )
+
+    assert "missing data" in result["concerns"]
+    assert "unclear response" in result["concerns"]
+
+
+def test_parse_verification_with_valid_final_confidence(verifier):
+    """FINAL_CONFIDENCE: <float> is parsed and stored."""
+    result = verifier._parse_verification(
+        "GROUNDED: yes\nCOMPLETE: yes\nCONCERNS: none\nFINAL_CONFIDENCE: 0.87\nCRITIQUE: Good",
+        agent_confidence=0.5,
+    )
+
+    assert result["final_confidence"] == pytest.approx(0.87)
+
+
+def test_parse_verification_invalid_final_confidence_uses_default(verifier):
+    """Non-numeric FINAL_CONFIDENCE leaves the default agent_confidence unchanged."""
+    result = verifier._parse_verification(
+        "GROUNDED: yes\nCOMPLETE: yes\nCONCERNS: none\nFINAL_CONFIDENCE: unknown",
+        agent_confidence=0.72,
+    )
+
+    # float("unknown") raises → except: pass → falls back to agent_confidence
+    assert result["final_confidence"] == pytest.approx(0.72)

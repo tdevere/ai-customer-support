@@ -165,3 +165,30 @@ custom_answers:
     yaml_file.write_text("custom_answers: []\n")
     m.reload(str(yaml_file))
     assert m.match("reload test") is None
+
+
+def test_reload_without_argument_uses_default_yaml(matcher):
+    """reload() called with no argument reloads from the default YAML path."""
+    original_count = matcher.entry_count
+    # Calling without argument should not raise and should preserve entries
+    matcher.reload()
+    assert matcher.entry_count == original_count
+
+
+def test_matches_static_returns_false_for_no_match():
+    """_matches returns False when pattern appears neither as substring nor word-boundary."""
+    from orchestrator.custom_answers import CustomAnswersMatcher
+
+    # Use a 4-word pattern (word_count > 3) that is NOT in the message at all
+    assert (
+        CustomAnswersMatcher._matches("completely unrelated phrase here", "hello world")
+        is False
+    )
+
+
+def test_matches_static_word_boundary_no_match_returns_false():
+    """_matches returns False when short pattern matches neither substring nor regex."""
+    from orchestrator.custom_answers import CustomAnswersMatcher
+
+    # "cost" NOT in "ship" — and word-boundary regex also won't match
+    assert CustomAnswersMatcher._matches("cost", "I need to ship my package") is False

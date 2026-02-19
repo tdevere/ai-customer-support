@@ -293,3 +293,103 @@ async def test_webhook_conversation_topic_success():
         resp = await webhook_trigger(req)
 
     assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_reply_to_conversation_invalid_json():
+    """Returns 400 when reply body is not valid JSON."""
+    from function_app import reply_to_conversation
+
+    req = func.HttpRequest(
+        method="POST",
+        url="https://localhost/api/test",
+        headers={},
+        params={},
+        route_params={"conversation_id": "conv-abc"},
+        body=b"not valid json {{",
+    )
+    resp = await reply_to_conversation(req)
+
+    assert resp.status_code == 400
+    data = json.loads(resp.get_body())
+    assert "error" in data
+
+
+@pytest.mark.asyncio
+async def test_webhook_conversation_topic_escalated():
+    """Full webhook flow: valid sig, conversation topic, escalated → note added."""
+    from function_app import webhook_trigger
+
+    item = {
+        "id": "conv-webhook-esc",
+        "conversation_message": {"body": "Urgent refund needed"},
+        "user": {"id": "usr-42"},
+    }
+    payload = json.dumps(
+        {"topic": "conversation.user.replied", "data": {"item": item}}
+    ).encode()
+
+    mock_result = {
+        **_ORCHESTRATOR_RESULT_OK,
+        "status": "escalated",
+        "escalation_summary": "Needs human review",
+    }
+
+    with (
+        patch("integrations.intercom.validate_webhook_signature", return_value=True),
+        patch(
+            "orchestrator.graph.run_aan_orchestrator",
+            new=AsyncMock(return_value=mock_result),
+        ),
+        patch(
+            "integrations.intercom.add_note_to_intercom",
+            new=AsyncMock(return_value=None),
+        ),
+    ):
+        req = func.HttpRequest(
+            method="POST",
+            url="https://localhost/api/webhook",
+            headers={},
+            params={},
+            route_params={},
+            body=payload,
+        )
+        resp = await webhook_trigger(req)
+
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_webhook_trigger_exception_returns_500():
+    """Exception raised during webhook processing returns 500."""
+    from function_app import webhook_trigger
+
+    item = {
+        "id": "conv-err",
+        "conversation_message": {"body": "Test"},
+        "user": {"id": "u1"},
+    }
+    payload = json.dumps(
+        {"topic": "conversation.user.replied", "data": {"item": item}}
+    ).encode()
+
+    with (
+        patch("integrations.intercom.validate_webhook_signature", return_value=True),
+        patch(
+            "orchestrator.graph.run_aan_orchestrator",
+            new=AsyncMock(side_effect=RuntimeError("orchestrator exploded")),
+        ),
+    ):
+        req = func.HttpRequest(
+            method="POST",
+            url="https://localhost/api/webhook",
+            headers={},
+            params={},
+            route_params={},
+            body=payload,
+        )
+        resp = await webhook_trigger(req)
+
+    assert resp.status_code == 500
+    data = json.loads(resp.get_body())
+    assert "error" in data

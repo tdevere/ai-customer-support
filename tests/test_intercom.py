@@ -355,3 +355,56 @@ async def test_get_conversation_returns_data():
 
     assert result["id"] == "conv-99"
     assert result["state"] == "open"
+
+
+@pytest.mark.asyncio
+async def test_post_reply_includes_admin_id_in_payload():
+    """admin_id is added to the request payload when provided."""
+    from integrations.intercom import post_reply_to_intercom
+
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"id": "reply-admin"}
+    mock_response.raise_for_status = MagicMock()
+
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+    mock_client.post = AsyncMock(return_value=mock_response)
+
+    with patch("httpx.AsyncClient", return_value=mock_client):
+        await post_reply_to_intercom("conv-1", "Hello!", admin_id="admin-007")
+
+    _, kwargs = mock_client.post.call_args
+    assert kwargs["json"].get("admin_id") == "admin-007"
+
+
+@pytest.mark.asyncio
+async def test_add_note_raises_on_http_error():
+    """add_note_to_intercom re-raises httpx.HTTPError."""
+    import httpx
+    from integrations.intercom import add_note_to_intercom
+
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+    mock_client.post = AsyncMock(side_effect=httpx.HTTPError("server down"))
+
+    with patch("httpx.AsyncClient", return_value=mock_client):
+        with pytest.raises(httpx.HTTPError):
+            await add_note_to_intercom("conv-err", "note text")
+
+
+@pytest.mark.asyncio
+async def test_get_conversation_raises_on_http_error():
+    """get_conversation_from_intercom re-raises httpx.HTTPError."""
+    import httpx
+    from integrations.intercom import get_conversation_from_intercom
+
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+    mock_client.get = AsyncMock(side_effect=httpx.HTTPError("timeout"))
+
+    with patch("httpx.AsyncClient", return_value=mock_client):
+        with pytest.raises(httpx.HTTPError):
+            await get_conversation_from_intercom("conv-err")

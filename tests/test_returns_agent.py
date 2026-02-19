@@ -182,3 +182,38 @@ def test_returns_agent_unknown_tool_recorded_as_error(mocker):
 
     assert len(result["tool_results"]) == 1
     assert "Unknown tool" in result["tool_results"][0]["result"]["error"]
+
+
+def test_returns_tool_invoke_raises_error_stored(mocker):
+    """When a known tool's invoke() raises, the exception is captured in tool_results."""
+    mock_tool = mocker.MagicMock()
+    mock_tool.name = "get_order"
+    mock_tool.invoke.side_effect = Exception("Shopify API timeout")
+    mocker.patch("agents.returns_agent.shopify_tools", [mock_tool])
+
+    _make_llm_pair(
+        mocker,
+        tool_calls=[{"name": "get_order", "args": {"order_id": "ORD-BAD"}}],
+        final_text="Could not retrieve order.\nCONFIDENCE: 0.35",
+    )
+
+    from agents.returns_agent import create_returns_agent
+
+    agent = create_returns_agent()
+    result = agent.invoke(_base_state())
+
+    assert len(result["tool_results"]) == 1
+    assert "error" in result["tool_results"][0]["result"]
+    assert "Shopify API timeout" in result["tool_results"][0]["result"]["error"]
+
+
+def test_returns_confidence_parse_failure_stays_default(mocker):
+    """Non-numeric CONFIDENCE value falls back to 0.5 without crashing."""
+    _make_llm_pair(mocker, final_text="Return approved.\nCONFIDENCE: maybe")
+
+    from agents.returns_agent import create_returns_agent
+
+    agent = create_returns_agent()
+    result = agent.invoke(_base_state())
+
+    assert result["confidence"] == pytest.approx(0.5)

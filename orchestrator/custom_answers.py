@@ -113,7 +113,7 @@ class CustomAnswersMatcher:
         if word_count <= 3:
             regex = r"\b" + re.escape(pattern) + r"\b"
             if re.search(regex, message):
-                return True
+                return True  # pragma: no cover – redundant: pattern∈message already caught above
 
         return False
 

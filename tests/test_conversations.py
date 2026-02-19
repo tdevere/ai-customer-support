@@ -280,3 +280,23 @@ def test_response_includes_all_expected_fields(client, mock_orchestrator_success
     }
     for key in expected_keys:
         assert key in data, f"Missing key in response: {key}"
+
+
+# ---------------------------------------------------------------------------
+# API key authentication
+# ---------------------------------------------------------------------------
+
+
+def test_api_key_required_rejects_wrong_key(client, monkeypatch):
+    """Returns 401 when SUPPORT_API_KEY is configured and the request key is wrong."""
+    from shared.config import settings
+
+    monkeypatch.setattr(settings, "support_api_key", "secret-key-123")
+
+    response = client.post(
+        "/conversations",
+        json={"user_id": "u", "message": "hello"},
+        headers={"X-API-Key": "wrong-key"},
+    )
+
+    assert response.status_code == 401

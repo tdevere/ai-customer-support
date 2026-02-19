@@ -176,3 +176,38 @@ def test_tech_agent_unknown_tool_error(mocker):
 
     assert len(result["tool_results"]) == 1
     assert "Unknown tool" in result["tool_results"][0]["result"]["error"]
+
+
+def test_tech_tool_invoke_raises_error_stored(mocker):
+    """When a known tool's invoke() raises, the exception is captured in tool_results."""
+    mock_tool = mocker.MagicMock()
+    mock_tool.name = "search_jira_tickets"
+    mock_tool.invoke.side_effect = Exception("Jira connection refused")
+    mocker.patch("agents.tech_agent.jira_tools", [mock_tool])
+
+    _make_llm_pair(
+        mocker,
+        tool_calls=[{"name": "search_jira_tickets", "args": {"query": "crash"}}],
+        final_text="Could not search tickets.\nCONFIDENCE: 0.30",
+    )
+
+    from agents.tech_agent import create_tech_agent
+
+    agent = create_tech_agent()
+    result = agent.invoke(_base_state())
+
+    assert len(result["tool_results"]) == 1
+    assert "error" in result["tool_results"][0]["result"]
+    assert "Jira connection refused" in result["tool_results"][0]["result"]["error"]
+
+
+def test_tech_confidence_parse_failure_stays_default(mocker):
+    """Non-numeric CONFIDENCE value falls back to 0.5 without crashing."""
+    _make_llm_pair(mocker, final_text="Here is the fix.\nCONFIDENCE: uncertain")
+
+    from agents.tech_agent import create_tech_agent
+
+    agent = create_tech_agent()
+    result = agent.invoke(_base_state())
+
+    assert result["confidence"] == pytest.approx(0.5)
