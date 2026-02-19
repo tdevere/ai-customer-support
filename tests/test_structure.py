@@ -55,6 +55,7 @@ def test_orchestrator_files_exist():
         "supervisor.py",
         "verifier.py",
         "escalator.py",
+        "custom_answers.py",
     ]
 
     for file_name in required_files:
@@ -68,7 +69,7 @@ def test_integration_files_exist():
     """Test that integration files exist."""
     base_dir = Path(__file__).parent.parent / "integrations"
 
-    required_files = ["__init__.py", "intercom.py"]
+    required_files = ["__init__.py", "intercom.py", "conversations.py"]
 
     for file_name in required_files:
         file_path = base_dir / file_name
@@ -157,6 +158,16 @@ def test_registry_yaml_valid():
     assert "billing" in content
     assert "technical" in content
     assert "returns" in content
+
+
+def test_custom_answers_yaml_valid():
+    """Test that custom_answers.yaml exists and has valid entries."""
+    ca_file = Path(__file__).parent.parent / "agents" / "custom_answers.yaml"
+    assert ca_file.exists(), "agents/custom_answers.yaml not found"
+    content = ca_file.read_text()
+    assert "custom_answers" in content
+    assert "patterns" in content
+    assert "answer" in content
 
 
 if __name__ == "__main__":

@@ -32,9 +32,13 @@ class Settings(BaseSettings):
     azure_search_key: str = os.getenv("AZURE_SEARCH_KEY", "")
     azure_search_index: str = "support_knowledge"
 
-    # Intercom
+    # Intercom (legacy – kept for backward compat; not required by conversations.py)
     intercom_access_token: str = os.getenv("INTERCOM_ACCESS_TOKEN", "")
     intercom_webhook_secret: str = os.getenv("INTERCOM_WEBHOOK_SECRET", "")
+
+    # Generic conversation API
+    support_api_key: str = os.getenv("SUPPORT_API_KEY", "")
+    # Leave blank to disable authentication (useful in dev / CI)
 
     # External Services
     stripe_api_key: str = os.getenv("STRIPE_API_KEY", "")
