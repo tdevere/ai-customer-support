@@ -78,7 +78,9 @@ aan-intercom-support/
 │   └── backend.tf        # Remote state backend (Azure Blob)
 ├── examples/              # Runnable usage examples
 ├── scripts/               # Developer tooling
-│   └── test_local.ps1    # Full CI pipeline locally (Windows/PowerShell)
+│   ├── test_local.ps1    # Full CI pipeline locally (Windows/PowerShell)
+│   ├── demo_local.py     # Mock server — demo without Azure credentials
+│   └── demo.ps1          # Guided 4-scene demo runner
 └── requirements.txt       # Python dependencies
 ```
 
@@ -161,6 +163,39 @@ func azure functionapp publish func-aan-support-dev
 2. Add webhook URL: `https://your-function-app.azurewebsites.net/api/webhook`
 3. Subscribe to: `conversation.user.replied`, `conversation.user.created`
 4. Copy webhook secret to `.env`
+
+## 🎬 Running the Demo
+
+See every capability of the system **without any Azure credentials** using the local mock server.
+
+**Terminal 1** — start the mock server (keep running):
+
+```powershell
+.venv\Scripts\python.exe scripts/demo_local.py
+```
+
+**Terminal 2** — run the guided 4-scene demo:
+
+```powershell
+.\scripts\demo.ps1
+```
+
+Or start the server automatically:
+
+```powershell
+.\scripts\demo.ps1 -StartServer
+```
+
+Once running, the interactive Swagger UI is available at:
+
+```
+http://localhost:8000/docs
+```
+
+For the full demo walkthrough, recorded output, and manual `curl`/PowerShell examples,  
+see **[docs/DEMO.md](./docs/DEMO.md)**.
+
+---
 
 ## 🧪 Testing
 
