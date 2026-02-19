@@ -5,6 +5,7 @@ Loads settings from environment variables and Azure Key Vault.
 
 import os
 from typing import Optional
+from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
@@ -66,9 +67,7 @@ class Settings(BaseSettings):
     # Key Vault (optional)
     key_vault_url: Optional[str] = os.getenv("KEY_VAULT_URL")
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    model_config = ConfigDict(env_file=".env", case_sensitive=False)
 
 
 # Global settings instance
