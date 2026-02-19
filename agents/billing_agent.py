@@ -59,6 +59,9 @@ def create_billing_agent():
         """Execute Stripe tools if needed."""
         query = state["query"]
 
+        # Build a name→tool lookup for fast dispatch
+        tool_map = {t.name: t for t in stripe_tools}
+
         system_prompt = """You are a billing specialist assistant with access to Stripe tools.
 Analyze the customer query and determine if you need to call any Stripe tools to get information.
 If you need tool calls, make them. Otherwise, proceed with answering based on available context.
@@ -82,17 +85,21 @@ Be helpful, professional, and accurate. Only make tool calls if necessary."""
 
         response = llm_with_tools.invoke(messages)
 
-        # Store tool results if any
+        # Execute every tool the LLM requested
         tool_results = []
         if hasattr(response, "tool_calls") and response.tool_calls:
             for tool_call in response.tool_calls:
-                # In real implementation, execute tools here
+                tool_name = tool_call.get("name")
+                tool_args = tool_call.get("args", {})
+                if tool_name in tool_map:
+                    try:
+                        result = tool_map[tool_name].invoke(tool_args)
+                    except Exception as exc:
+                        result = {"error": str(exc)}
+                else:
+                    result = {"error": f"Unknown tool: {tool_name}"}
                 tool_results.append(
-                    {
-                        "tool": tool_call.get("name"),
-                        "args": tool_call.get("args"),
-                        "result": "Tool execution placeholder",
-                    }
+                    {"tool": tool_name, "args": tool_args, "result": result}
                 )
 
         state["tool_results"] = tool_results

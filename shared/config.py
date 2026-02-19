@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     stripe_api_key: str = os.getenv("STRIPE_API_KEY", "")
     jira_api_token: str = os.getenv("JIRA_API_TOKEN", "")
     jira_base_url: str = os.getenv("JIRA_BASE_URL", "")
+    # Jira Cloud REST API v3 requires Basic auth with email:api_token (base64-encoded).
+    # JIRA_EMAIL should be the Atlassian account email associated with the API token.
+    jira_email: str = os.getenv("JIRA_EMAIL", "")
+    jira_project_key: str = os.getenv("JIRA_PROJECT_KEY", "SUP")
     shopify_api_key: str = os.getenv("SHOPIFY_API_KEY", "")
     shopify_shop_url: str = os.getenv("SHOPIFY_SHOP_URL", "")
 

@@ -20,6 +20,8 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv("INTERCOM_ACCESS_TOKEN", "mock-intercom-token")
     monkeypatch.setenv("INTERCOM_WEBHOOK_SECRET", "mock-webhook-secret")
     monkeypatch.setenv("STRIPE_API_KEY", "mock-stripe-key")
+    monkeypatch.setenv("JIRA_EMAIL", "mock-jira@example.com")
+    monkeypatch.setenv("JIRA_PROJECT_KEY", "SUP")
     monkeypatch.setenv("ENVIRONMENT", "test")
 
 

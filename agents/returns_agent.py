@@ -62,6 +62,9 @@ def create_returns_agent():
         order_id = state.get("order_id")
         customer_email = state.get("customer_email")
 
+        # Build a name→tool lookup for fast dispatch
+        tool_map = {t.name: t for t in shopify_tools}
+
         system_prompt = """You are a returns specialist with access to Shopify order management.
 Analyze the customer's return request and determine if you need to:
 1. Look up order details
@@ -89,16 +92,21 @@ Always check eligibility before processing refunds. Be fair but follow the retur
 
         response = llm_with_tools.invoke(messages)
 
-        # Store tool results if any
+        # Execute every tool the LLM requested
         tool_results = []
         if hasattr(response, "tool_calls") and response.tool_calls:
             for tool_call in response.tool_calls:
+                tool_name = tool_call.get("name")
+                tool_args = tool_call.get("args", {})
+                if tool_name in tool_map:
+                    try:
+                        result = tool_map[tool_name].invoke(tool_args)
+                    except Exception as exc:
+                        result = {"error": str(exc)}
+                else:
+                    result = {"error": f"Unknown tool: {tool_name}"}
                 tool_results.append(
-                    {
-                        "tool": tool_call.get("name"),
-                        "args": tool_call.get("args"),
-                        "result": "Tool execution placeholder",
-                    }
+                    {"tool": tool_name, "args": tool_args, "result": result}
                 )
 
         state["tool_results"] = tool_results

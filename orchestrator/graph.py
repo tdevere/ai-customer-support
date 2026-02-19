@@ -12,6 +12,7 @@ Graph flow
 """
 
 import importlib
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Literal, Optional
 from typing_extensions import TypedDict
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -303,7 +304,7 @@ def respond_node(state: OrchestratorState) -> OrchestratorState:
             "classification": state["classification"],
             "resolution_state": state["resolution_state"],
             "custom_answer_id": state.get("custom_answer_id", ""),
-            "timestamp": "now",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         },
     )
 
@@ -409,7 +410,7 @@ def escalate_node(state: OrchestratorState) -> OrchestratorState:
             "classification": state["classification"],
             "resolution_state": state["resolution_state"],
             "handoff_summary": handoff_summary,
-            "timestamp": "now",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         },
     )
 
@@ -514,7 +515,7 @@ async def run_aan_orchestrator(
     }
 
     try:
-        result = orchestrator.invoke(initial_state)
+        result = await orchestrator.ainvoke(initial_state)
 
         # Prefer the AI handoff summary; fall back to escalator plain-text
         escalation_summary = result.get("handoff_summary") or result.get(

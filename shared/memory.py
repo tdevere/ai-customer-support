@@ -110,6 +110,10 @@ class ConversationMemory:
             print(f"Error loading state for {conversation_id}: {e}")
             raise
 
+    def get_state(self, conversation_id: str) -> Optional[Dict[str, Any]]:
+        """Alias for load_state – used by the conversations REST API."""
+        return self.load_state(conversation_id)
+
     def delete_state(self, conversation_id: str) -> None:
         """
         Delete conversation state (for GDPR compliance).
