@@ -1,9 +1,11 @@
 # Core Framework
 # Security: Updated to patched versions (CVE fixes for template injection and serialization vulnerabilities)
+# Note: langchain >= 0.3.15 required for compatibility with langchain-core 0.3.81 (langsmith dependency)
 langgraph==0.2.60
-langchain==0.3.14
+langchain==0.3.15
 langchain-openai==0.2.14
 langchain-core==0.3.81
+langsmith==0.3.81
 
 # Azure Integration
 azure-functions==1.18.0
