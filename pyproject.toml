@@ -1,0 +1,41 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "strict"
+# Mirror CI flags so local runs and CI runs are identical
+addopts = "--cov=. --cov-report=term-missing"
+
+[tool.black]
+# line-length defaults to 88 (black's standard).
+# flake8 is configured with --max-line-length=127 to stay compatible.
+target-version = ["py311"]
+# Exclude generated/vendored directories
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | \.python_packages
+  | build
+  | dist
+)/
+'''
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    ".venv/*",
+    "*/.venv/*",
+    "*/site-packages/*",
+    ".python_packages/*",
+    "tests/*",
+    "infra/*",
+    "examples/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "pass",
+]

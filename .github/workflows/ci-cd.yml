@@ -51,7 +51,8 @@ jobs:
           AZURE_OPENAI_ENDPOINT: "https://mock.openai.azure.com"
           AZURE_OPENAI_API_KEY: "mock-key"
           COSMOS_ENDPOINT: "https://mock.cosmos.azure.com"
-          COSMOS_KEY: "mock-key"
+          # Must be valid base64 — Cosmos SDK decodes the key on first connection.
+          COSMOS_KEY: "bW9jay1jb3Ntb3Mta2V5LWZvcnRlc3Rpbmc="
           AZURE_SEARCH_ENDPOINT: "https://mock.search.windows.net"
           AZURE_SEARCH_KEY: "mock-key"
           INTERCOM_ACCESS_TOKEN: "mock-token"

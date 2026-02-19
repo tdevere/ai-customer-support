@@ -1,0 +1,21 @@
+[flake8]
+# Match CI configuration exactly
+max-line-length = 127
+max-complexity = 10
+# Exclude virtual environments and generated paths
+exclude =
+    .git,
+    .venv,
+    venv,
+    __pycache__,
+    *.egg-info,
+    .python_packages,
+    build,
+    dist,
+    infra,
+    examples
+# Fatal errors only (used in the strict CI pass)
+# For the full advisory pass, CI uses --exit-zero
+per-file-ignores =
+    # Test files: allow unused imports and assert style
+    tests/*:F401,S101
