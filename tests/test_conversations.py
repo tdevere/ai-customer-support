@@ -300,3 +300,67 @@ def test_api_key_required_rejects_wrong_key(client, monkeypatch):
     )
 
     assert response.status_code == 401
+
+
+def test_api_key_accepts_correct_key(client, mock_orchestrator_success, monkeypatch):
+    """Returns 201 when the correct API key header is supplied."""
+    from shared.config import settings
+
+    monkeypatch.setattr(settings, "support_api_key", "secret-key-123")
+
+    with patch(
+        _ORCHESTRATOR_PATCH,
+        new=AsyncMock(return_value=mock_orchestrator_success),
+    ):
+        response = client.post(
+            "/conversations",
+            json={"user_id": "u", "message": "hello"},
+            headers={"X-API-Key": "secret-key-123"},
+        )
+
+    assert response.status_code == 201
+
+
+def test_api_key_not_required_when_unconfigured(client, mock_orchestrator_success):
+    """When SUPPORT_API_KEY is blank, requests succeed without an API key header."""
+    with patch(
+        _ORCHESTRATOR_PATCH,
+        new=AsyncMock(return_value=mock_orchestrator_success),
+    ):
+        response = client.post(
+            "/conversations",
+            json={"user_id": "u", "message": "hello"},
+        )
+
+    assert response.status_code == 201
+
+
+# ---------------------------------------------------------------------------
+# X-Request-ID middleware
+# ---------------------------------------------------------------------------
+
+
+def test_request_id_header_generated_when_absent(client):
+    """Middleware adds X-Request-ID to responses when the header is not sent."""
+    response = client.get("/health")
+
+    assert "x-request-id" in response.headers
+    request_id = response.headers["x-request-id"]
+    assert request_id  # non-empty
+    # Should be a valid UUID4 (36 chars: 8-4-4-4-12 with hyphens)
+    assert len(request_id) == 36
+    assert request_id.count("-") == 4
+
+
+def test_request_id_header_propagated_when_present(client):
+    """Middleware echoes back the caller-supplied X-Request-ID unchanged."""
+    custom_id = "my-trace-id-abc123"
+    response = client.get("/health", headers={"X-Request-ID": custom_id})
+
+    assert response.headers.get("x-request-id") == custom_id
+
+
+def test_request_id_unique_per_request(client):
+    """Each request without a caller-supplid ID receives a distinct generated ID."""
+    ids = {client.get("/health").headers["x-request-id"] for _ in range(5)}
+    assert len(ids) == 5, "Each request should get a different X-Request-ID"
