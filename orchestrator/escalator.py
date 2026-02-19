@@ -3,7 +3,7 @@ Escalator agent for human handoff.
 """
 
 from typing import Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class EscalatorAgent:
@@ -38,7 +38,7 @@ class EscalatorAgent:
             "ESCALATION SUMMARY",
             "=" * 50,
             f"Conversation ID: {conversation_id}",
-            f"Time: {datetime.utcnow().isoformat()}",
+            f"Time: {datetime.now(timezone.utc).isoformat()}",
             f"",
             f"Customer Query:",
             f"{query}",
@@ -111,7 +111,7 @@ class EscalatorAgent:
             "escalation_reason": verification.get(
                 "critique", "Low confidence or unresolved issue"
             ),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     def _determine_priority(self, verification: Dict[str, Any]) -> str:

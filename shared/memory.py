@@ -3,7 +3,7 @@ Shared memory and state management using LangGraph checkpointer and Cosmos DB.
 """
 
 from typing import Dict, Any, Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from azure.cosmos import CosmosClient, PartitionKey
 from azure.cosmos.exceptions import CosmosHttpResponseError
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
@@ -79,8 +79,8 @@ class ConversationMemory:
             "id": conversation_id,
             "conversation_id": conversation_id,
             "state": state,
-            "updated_at": datetime.utcnow().isoformat(),
-            "_ts": int(datetime.utcnow().timestamp()),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "_ts": int(datetime.now(timezone.utc).timestamp()),
         }
 
         try:
@@ -164,7 +164,7 @@ class ConversationMemory:
             "enabled": config.get("enabled", True),
             "tools": config.get("tools", []),
             "rag_index": config.get("rag_index", settings.azure_search_index),
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
         try:
@@ -201,7 +201,7 @@ class ConversationMemory:
             if "feedback" not in state:
                 state["feedback"] = []
             state["feedback"].append(
-                {**feedback, "timestamp": datetime.utcnow().isoformat()}
+                {**feedback, "timestamp": datetime.now(timezone.utc).isoformat()}
             )
             self.save_state(conversation_id, state)
 
