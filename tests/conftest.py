@@ -1,6 +1,7 @@
 """
 Test configuration and fixtures.
 """
+
 import pytest
 import os
 
@@ -27,28 +28,22 @@ def sample_conversation_state():
         "conversation_id": "test-conv-123",
         "user_id": "user-456",
         "message": "Test message",
-        "context": {
-            "customer_id": "cust_789",
-            "email": "test@example.com"
-        },
-        "classification": {
-            "primary_topic": "billing",
-            "primary_confidence": 0.8
-        },
+        "context": {"customer_id": "cust_789", "email": "test@example.com"},
+        "classification": {"primary_topic": "billing", "primary_confidence": 0.8},
         "specialist_responses": [
             {
                 "agent": "billing",
                 "response": "Test response",
                 "confidence": 0.8,
-                "sources": []
+                "sources": [],
             }
         ],
         "verification": {
             "final_confidence": 0.75,
             "grounded": "yes",
-            "should_escalate": False
+            "should_escalate": False,
         },
-        "status": "success"
+        "status": "success",
     }
 
 
@@ -61,5 +56,5 @@ def sample_verification_result():
         "concerns": [],
         "final_confidence": 0.8,
         "critique": "Good response",
-        "should_escalate": False
+        "should_escalate": False,
     }
