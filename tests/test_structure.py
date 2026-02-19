@@ -89,7 +89,7 @@ def test_shared_files_exist():
     """Test that shared files exist."""
     base_dir = Path(__file__).parent.parent / "shared"
 
-    required_files = ["__init__.py", "config.py", "memory.py", "rag.py"]
+    required_files = ["__init__.py", "config.py", "memory.py", "rag.py", "telemetry.py"]
 
     for file_name in required_files:
         file_path = base_dir / file_name

@@ -15,8 +15,10 @@ import logging
 import uuid
 
 import azure.functions as func
+from shared.telemetry import configure_telemetry, track_event
 
 app = func.FunctionApp()
+configure_telemetry()
 
 # ---------------------------------------------------------------------------
 # Conversations API
@@ -64,6 +66,10 @@ async def start_conversation(req: func.HttpRequest) -> func.HttpResponse:
         context=context,
     )
 
+    track_event(
+        "conversation.started",
+        {"user_id": user_id, "channel": context.get("channel", "api")},
+    )
     return func.HttpResponse(
         json.dumps({"conversation_id": conversation_id, **result}),
         status_code=201,
@@ -109,6 +115,7 @@ async def reply_to_conversation(req: func.HttpRequest) -> func.HttpResponse:
         context=body.get("context") or {},
     )
 
+    track_event("conversation.replied", {"conversation_id": conversation_id})
     return func.HttpResponse(
         json.dumps({"conversation_id": conversation_id, **result}),
         status_code=200,
@@ -199,6 +206,7 @@ async def webhook_trigger(req: func.HttpRequest) -> func.HttpResponse:
         data = payload.get("data", {})
         item = data.get("item", {})
 
+        track_event("webhook.received", {"topic": topic or "unknown"})
         logging.info(f"Processing webhook topic: {topic}")
 
         if topic in ["conversation.user.replied", "conversation.user.created"]:

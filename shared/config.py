@@ -60,6 +60,7 @@ class Settings(BaseSettings):
     # Application
     environment: str = os.getenv("ENVIRONMENT", "development")
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
+    appinsights_connection_string: str = os.getenv("APPINSIGHTS_CONNECTION_STRING", "")
     confidence_threshold: float = 0.7
     max_retry_attempts: int = 3
     request_timeout: int = 30
