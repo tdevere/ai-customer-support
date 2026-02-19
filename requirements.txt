@@ -5,7 +5,7 @@ langgraph>=0.2.60
 langchain>=0.3.15
 langchain-openai>=0.2.14
 langchain-core>=0.3.81
-# langsmith will be resolved automatically based on langchain-core requirements (>=0.3.45,<1.0.0)
+langsmith>=0.3.45,<1.0.0
 
 # Azure Integration
 azure-functions>=1.18.0
