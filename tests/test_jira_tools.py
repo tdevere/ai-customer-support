@@ -184,3 +184,115 @@ def test_get_jira_ticket_success(mocker):
     assert result["status"] == "In Progress"
     assert result["assignee"] == "Jane Dev"
     assert "SUP-42" in result["url"]
+
+
+# ---------------------------------------------------------------------------
+# HTTP error paths
+# ---------------------------------------------------------------------------
+
+
+def _http_status_error(status_code: int = 404, body: str = "Not Found"):
+    """Build a minimal httpx.HTTPStatusError."""
+    import httpx
+
+    mock_response = MagicMock()
+    mock_response.status_code = status_code
+    mock_response.text = body
+    return httpx.HTTPStatusError(
+        f"{status_code} {body}",
+        request=MagicMock(),
+        response=mock_response,
+    )
+
+
+def _http_error(msg: str = "connection error"):
+    import httpx
+
+    return httpx.HTTPError(msg)
+
+
+def test_create_jira_ticket_http_status_error(mocker):
+    """create_jira_ticket returns error dict on HTTPStatusError (e.g. 400)."""
+    from integrations.tools.jira_tools import create_jira_ticket
+
+    mocker.patch(
+        "integrations.tools.jira_tools.httpx.post",
+        side_effect=_http_status_error(400, "Bad Request"),
+    )
+    result = create_jira_ticket.invoke({"summary": "fail", "description": "fail"})
+    assert "error" in result
+    assert "400" in result["error"]
+
+
+def test_create_jira_ticket_http_error(mocker):
+    """create_jira_ticket returns error dict on network HTTPError."""
+    from integrations.tools.jira_tools import create_jira_ticket
+
+    mocker.patch(
+        "integrations.tools.jira_tools.httpx.post",
+        side_effect=_http_error("timeout"),
+    )
+    result = create_jira_ticket.invoke({"summary": "fail", "description": "fail"})
+    assert "error" in result
+
+
+def test_search_jira_tickets_http_status_error(mocker):
+    """search_jira_tickets returns error list on HTTPStatusError."""
+    from integrations.tools.jira_tools import search_jira_tickets
+
+    mocker.patch(
+        "integrations.tools.jira_tools.httpx.get",
+        side_effect=_http_status_error(403, "Forbidden"),
+    )
+    result = search_jira_tickets.invoke({"query": "project=SUP"})
+    assert isinstance(result, list)
+    assert "error" in result[0]
+    assert "403" in result[0]["error"]
+
+
+def test_search_jira_tickets_http_error(mocker):
+    """search_jira_tickets returns error list on network error."""
+    from integrations.tools.jira_tools import search_jira_tickets
+
+    mocker.patch(
+        "integrations.tools.jira_tools.httpx.get",
+        side_effect=_http_error("dns failure"),
+    )
+    result = search_jira_tickets.invoke({"query": "project=SUP"})
+    assert isinstance(result, list)
+    assert "error" in result[0]
+
+
+def test_get_jira_ticket_http_status_error(mocker):
+    """get_jira_ticket returns error dict on HTTPStatusError."""
+    from integrations.tools.jira_tools import get_jira_ticket
+
+    mocker.patch(
+        "integrations.tools.jira_tools.httpx.get",
+        side_effect=_http_status_error(404, "Not Found"),
+    )
+    result = get_jira_ticket.invoke({"ticket_key": "SUP-MISSING"})
+    assert "error" in result
+    assert "404" in result["error"]
+
+
+def test_get_jira_ticket_http_error(mocker):
+    """get_jira_ticket returns error dict on network error."""
+    from integrations.tools.jira_tools import get_jira_ticket
+
+    mocker.patch(
+        "integrations.tools.jira_tools.httpx.get",
+        side_effect=_http_error("connection refused"),
+    )
+    result = get_jira_ticket.invoke({"ticket_key": "SUP-OFFLINE"})
+    assert "error" in result
+
+
+def test_get_jira_ticket_missing_config(monkeypatch):
+    """Returns error dict when Jira credentials are not configured."""
+    from integrations.tools.jira_tools import get_jira_ticket
+
+    monkeypatch.setattr(settings, "jira_base_url", "")
+
+    result = get_jira_ticket.invoke({"ticket_key": "SUP-1"})
+    assert "error" in result

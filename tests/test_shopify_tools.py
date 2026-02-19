@@ -197,3 +197,159 @@ def test_check_return_eligibility_unfulfilled(mocker):
     result = check_return_eligibility.invoke({"order_id": "77777"})
 
     assert result["eligible"] is False
+
+
+# ---------------------------------------------------------------------------
+# HTTP error paths
+# ---------------------------------------------------------------------------
+
+
+def _http_status_error(status_code: int = 404, body: str = "Not Found"):
+    import httpx
+
+    mock_response = MagicMock()
+    mock_response.status_code = status_code
+    mock_response.text = body
+    return httpx.HTTPStatusError(
+        f"{status_code} {body}",
+        request=MagicMock(),
+        response=mock_response,
+    )
+
+
+def _http_error(msg: str = "connection error"):
+    import httpx
+
+    return httpx.HTTPError(msg)
+
+
+def test_get_order_http_status_error(mocker):
+    """get_order returns error dict on HTTPStatusError."""
+    from integrations.tools.shopify_tools import get_order
+
+    mocker.patch(
+        "integrations.tools.shopify_tools.httpx.get",
+        side_effect=_http_status_error(404, "Not Found"),
+    )
+    result = get_order.invoke({"order_id": "bad_id"})
+    assert "error" in result
+    assert "404" in result["error"]
+
+
+def test_get_order_http_error(mocker):
+    """get_order returns error dict on network error."""
+    from integrations.tools.shopify_tools import get_order
+
+    mocker.patch(
+        "integrations.tools.shopify_tools.httpx.get",
+        side_effect=_http_error("timeout"),
+    )
+    result = get_order.invoke({"order_id": "bad_id"})
+    assert "error" in result
+
+
+def test_search_orders_http_status_error(mocker):
+    """search_orders returns error list on HTTPStatusError."""
+    from integrations.tools.shopify_tools import search_orders
+
+    mocker.patch(
+        "integrations.tools.shopify_tools.httpx.get",
+        side_effect=_http_status_error(403, "Forbidden"),
+    )
+    result = search_orders.invoke({"customer_email": "x@y.com"})
+    assert isinstance(result, list)
+    assert "error" in result[0]
+
+
+def test_search_orders_http_error(mocker):
+    """search_orders returns error list on network error."""
+    from integrations.tools.shopify_tools import search_orders
+
+    mocker.patch(
+        "integrations.tools.shopify_tools.httpx.get",
+        side_effect=_http_error("dns failure"),
+    )
+    result = search_orders.invoke({"customer_email": "x@y.com"})
+    assert isinstance(result, list)
+    assert "error" in result[0]
+
+
+def test_create_refund_http_status_error(mocker):
+    """create_refund returns error dict on HTTPStatusError."""
+    from integrations.tools.shopify_tools import create_refund
+
+    mocker.patch(
+        "integrations.tools.shopify_tools.httpx.post",
+        side_effect=_http_status_error(422, "Unprocessable"),
+    )
+    result = create_refund.invoke({"order_id": "bad", "amount": 10.0})
+    assert "error" in result
+    assert "422" in result["error"]
+
+
+def test_create_refund_http_error(mocker):
+    """create_refund returns error dict on network error."""
+    from integrations.tools.shopify_tools import create_refund
+
+    mocker.patch(
+        "integrations.tools.shopify_tools.httpx.post",
+        side_effect=_http_error("connection refused"),
+    )
+    result = create_refund.invoke({"order_id": "bad", "amount": 10.0})
+    assert "error" in result
+
+
+def test_create_refund_missing_config(monkeypatch):
+    """Returns error dict when Shopify is not configured."""
+    from integrations.tools.shopify_tools import create_refund
+
+    monkeypatch.setattr(settings, "shopify_api_key", "")
+
+    result = create_refund.invoke({"order_id": "111", "amount": 5.0})
+    assert "error" in result
+
+
+def test_search_orders_missing_config(monkeypatch):
+    """Returns error list when Shopify is not configured."""
+    from integrations.tools.shopify_tools import search_orders
+
+    monkeypatch.setattr(settings, "shopify_shop_url", "")
+
+    result = search_orders.invoke({"customer_email": "x@y.com"})
+    assert isinstance(result, list)
+    assert "error" in result[0]
+
+
+def test_check_return_eligibility_propagates_order_error(mocker):
+    """Returns error dict when get_order itself fails (e.g. not configured)."""
+    from integrations.tools.shopify_tools import check_return_eligibility
+
+    mocker.patch(
+        "integrations.tools.shopify_tools.httpx.get",
+        side_effect=_http_status_error(404, "Not Found"),
+    )
+    result = check_return_eligibility.invoke({"order_id": "missing"})
+    assert "error" in result
+
+
+def test_check_return_eligibility_invalid_date(mocker):
+    """Returns error dict when order date cannot be parsed."""
+    from integrations.tools.shopify_tools import check_return_eligibility
+
+    bad_order = {
+        "order": {
+            "id": "55555",
+            "order_number": 3001,
+            "created_at": "NOT_A_DATE",
+            "total_price": "10.00",
+            "currency": "USD",
+            "financial_status": "paid",
+            "fulfillment_status": "fulfilled",
+            "line_items": [],
+        }
+    }
+    mock_resp = _make_httpx_response(bad_order)
+    mocker.patch("integrations.tools.shopify_tools.httpx.get", return_value=mock_resp)
+
+    result = check_return_eligibility.invoke({"order_id": "55555"})
+    assert "error" in result
