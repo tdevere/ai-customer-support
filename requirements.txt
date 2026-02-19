@@ -1,48 +1,48 @@
 # Core Framework
-# Security: Updated to patched versions (CVE fixes for template injection and serialization vulnerabilities)
+# Security: Minimum versions pinned for patched releases (CVE fixes for template injection and serialization vulnerabilities)
 # Note: langchain >= 0.3.15 required for compatibility with langchain-core 0.3.81 (langsmith dependency)
-langgraph==0.2.60
-langchain==0.3.15
-langchain-openai==0.2.14
-langchain-core==0.3.81
+langgraph>=0.2.60
+langchain>=0.3.15
+langchain-openai>=0.2.14
+langchain-core>=0.3.81
 # langsmith will be resolved automatically based on langchain-core requirements (>=0.3.45,<1.0.0)
 
 # Azure Integration
-azure-functions==1.18.0
-azure-cosmos==4.6.0
-azure-identity==1.16.1
-azure-keyvault-secrets==4.8.0
-azure-monitor-opentelemetry==1.3.0
-opentelemetry-instrumentation-fastapi==0.45b0
+azure-functions>=1.18.0
+azure-cosmos>=4.6.0
+azure-identity>=1.16.1
+azure-keyvault-secrets>=4.8.0
+azure-monitor-opentelemetry>=1.3.0
+opentelemetry-instrumentation-fastapi>=0.45b0
 
 # Web Framework
-fastapi==0.115.6
-uvicorn[standard]==0.34.0
-pydantic==2.10.5
-pydantic-settings==2.7.1
+fastapi>=0.115.6
+uvicorn[standard]>=0.34.0
+pydantic>=2.10.5
+pydantic-settings>=2.7.1
 
 # External APIs
-httpx==0.27.2
-stripe==11.2.0
-requests==2.32.4
+httpx>=0.27.2
+stripe>=11.2.0
+requests>=2.32.4
 
 # Vector Store / RAG
-azure-search-documents==11.4.0
-tiktoken==0.7.0
+azure-search-documents>=11.4.0
+tiktoken>=0.7.0
 
 # Utilities
-python-dotenv==1.0.1
-pyyaml==6.0.1
-tenacity==8.2.3
+python-dotenv>=1.0.1
+pyyaml>=6.0.1
+tenacity>=8.2.3
 
 # Testing
-pytest==8.1.1
-pytest-asyncio==0.23.5
-pytest-cov==4.1.0
-responses==0.25.0
-pytest-mock==3.12.0
+pytest>=8.1.1
+pytest-asyncio>=0.23.5
+pytest-cov>=4.1.0
+responses>=0.25.0
+pytest-mock>=3.12.0
 
 # Development
-black==24.3.0
-flake8==7.0.0
-mypy==1.9.0
+black>=24.3.0
+flake8>=7.0.0
+mypy>=1.9.0
