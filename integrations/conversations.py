@@ -26,19 +26,38 @@ GET  /health
 import uuid
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException, Security, status
+from fastapi import FastAPI, HTTPException, Request, Security, status
 from fastapi.security.api_key import APIKeyHeader
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from shared.config import settings
 from shared.memory import memory
+from shared.telemetry import Timer, configure_telemetry, track_event
 
 app = FastAPI(
     title="AAN Customer Support API",
     description="Platform-agnostic adaptive agent network for customer support.",
     version="1.0.0",
 )
+
+# Initialise telemetry on first import; no-op when APPINSIGHTS_CONNECTION_STRING absent.
+configure_telemetry()
+
+
+# ---------------------------------------------------------------------------
+# Request-ID middleware — adds X-Request-ID to every response for tracing
+# ---------------------------------------------------------------------------
+
+
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    """Propagate or generate a X-Request-ID header on every response."""
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
+
 
 # ---------------------------------------------------------------------------
 # Optional API-key protection
@@ -168,13 +187,18 @@ async def start_conversation(
     context = request.context or {}
     context["channel"] = request.channel
 
-    result = await run_aan_orchestrator(
-        conversation_id=conversation_id,
-        user_id=request.user_id,
-        message=request.message,
-        context=context,
-    )
+    with Timer("orchestrator.response_ms", {"endpoint": "start_conversation"}):
+        result = await run_aan_orchestrator(
+            conversation_id=conversation_id,
+            user_id=request.user_id,
+            message=request.message,
+            context=context,
+        )
 
+    track_event(
+        "conversation.started",
+        {"user_id": request.user_id, "channel": request.channel or "api"},
+    )
     return _build_response(conversation_id, result)
 
 
@@ -198,13 +222,18 @@ async def reply_to_conversation(
 
     context = request.context or {}
 
-    result = await run_aan_orchestrator(
-        conversation_id=conversation_id,
-        user_id=request.user_id or "anonymous",
-        message=request.message,
-        context=context,
-    )
+    with Timer("orchestrator.response_ms", {"endpoint": "reply_to_conversation"}):
+        result = await run_aan_orchestrator(
+            conversation_id=conversation_id,
+            user_id=request.user_id or "anonymous",
+            message=request.message,
+            context=context,
+        )
 
+    track_event(
+        "conversation.replied",
+        {"conversation_id": conversation_id},
+    )
     return _build_response(conversation_id, result)
 
 

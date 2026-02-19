@@ -2,7 +2,7 @@
 testpaths = ["tests"]
 asyncio_mode = "strict"
 # Mirror CI flags so local runs and CI runs are identical
-addopts = "--cov=. --cov-report=term-missing"
+addopts = "--cov=. --cov-report=term-missing --cov-fail-under=90"
 
 [tool.black]
 # line-length defaults to 88 (black's standard).

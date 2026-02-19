@@ -1,4 +1,4 @@
-.PHONY: help install format lint test ci clean
+.PHONY: help install format lint typecheck test ci clean
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -15,11 +15,14 @@ lint: ## Run linting exactly as CI does (black + flake8)
 	flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 	flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-test: ## Run tests with coverage (loads .env.test)
-	@set -a && . ./.env.test && set +a && \
-	pytest tests/ --cov=. --cov-report=xml --cov-report=term
+typecheck: ## Run mypy type checks (continue-on-error like CI)
+	mypy shared/ orchestrator/ agents/ integrations/ --ignore-missing-imports --no-error-summary; true
 
-ci: lint test ## Run full CI pipeline locally (lint + test)
+test: ## Run tests with coverage gate (loads .env.test)
+	@set -a && . ./.env.test && set +a && \
+	pytest tests/ --cov=. --cov-report=xml --cov-report=term --cov-fail-under=90
+
+ci: lint typecheck test ## Run full CI pipeline locally (lint + typecheck + test)
 
 clean: ## Remove generated artefacts
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; true

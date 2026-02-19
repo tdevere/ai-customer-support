@@ -21,6 +21,7 @@
     "SHOPIFY_API_KEY": "",
     "AZURE_OPENAI_DEPLOYMENT_GPT4": "gpt-4o",
     "AZURE_OPENAI_DEPLOYMENT_GPT4_MINI": "gpt-4o-mini",
-    "ENVIRONMENT": "local"
+    "ENVIRONMENT": "local",
+    "APPINSIGHTS_CONNECTION_STRING": ""
   }
 }

@@ -26,7 +26,7 @@
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('', 'install', 'format', 'lint', 'test')]
+    [ValidateSet('', 'install', 'format', 'lint', 'typecheck', 'test')]
     [string]$Step = '',
 
     [switch]$Fix
@@ -145,13 +145,28 @@ function Step-Lint {
     Write-Ok "Lint advisory pass complete"
 }
 
+# ─── 4.5. Type check ─────────────────────────────────────────────────────────
+
+function Step-Typecheck {
+    Write-Header "Step 3.5 · Type checking (mypy)"
+    Write-Info "Running: mypy shared/ orchestrator/ agents/ integrations/ --ignore-missing-imports --no-error-summary"
+    python -m mypy shared/ orchestrator/ agents/ integrations/ --ignore-missing-imports --no-error-summary
+    # mypy exit code is non-zero when there are type errors, but we treat it as
+    # advisory (continue-on-error) to match CI behaviour.
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  ! mypy reported type issues (advisory only — will not block push)" -ForegroundColor Yellow
+    } else {
+        Write-Ok "mypy: no type errors found"
+    }
+}
+
 # ─── 5. Test ──────────────────────────────────────────────────────────────────
 
 function Step-Test {
     Write-Header "Step 4 · Tests (pytest + coverage)"
     Load-EnvTest
-    Write-Info "Running: pytest tests/ --cov=. --cov-report=xml --cov-report=term"
-    python -m pytest tests/ --cov=. --cov-report=xml --cov-report=term
+    Write-Info "Running: pytest tests/ --cov=. --cov-report=xml --cov-report=term --cov-fail-under=90"
+    python -m pytest tests/ --cov=. --cov-report=xml --cov-report=term --cov-fail-under=90
     if ($LASTEXITCODE -ne 0) {
         Write-Fail "Tests failed — see output above"
         exit 1
@@ -164,14 +179,16 @@ function Step-Test {
 $startTime = Get-Date
 
 switch ($Step) {
-    'install' { Step-Install }
-    'format'  { Step-Format }
-    'lint'    { Step-Lint }
-    'test'    { Step-Test }
-    default   {
+    'install'    { Step-Install }
+    'format'     { Step-Format }
+    'lint'       { Step-Lint }
+    'typecheck'  { Step-Typecheck }
+    'test'       { Step-Test }
+    default      {
         Step-Install
         Step-Format
         Step-Lint
+        Step-Typecheck
         Step-Test
     }
 }
