@@ -1,0 +1,16 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AZURE_OPENAI_ENDPOINT": "",
+    "AZURE_OPENAI_API_KEY": "",
+    "COSMOS_ENDPOINT": "",
+    "COSMOS_KEY": "",
+    "AZURE_SEARCH_ENDPOINT": "",
+    "AZURE_SEARCH_KEY": "",
+    "INTERCOM_ACCESS_TOKEN": "",
+    "INTERCOM_WEBHOOK_SECRET": "",
+    "ENVIRONMENT": "local"
+  }
+}
