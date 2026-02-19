@@ -56,7 +56,9 @@ The following dependencies were also updated to their latest stable versions for
 - **pydantic-settings**: 2.2.1 → 2.7.1
 - **httpx**: 0.27.0 → 0.27.2
 - **stripe**: 8.5.0 → 11.2.0
-- **requests**: 2.31.0 → 2.32.3
+- **requests**: 2.31.0 → 2.32.4 (CVE fix)
+- **azure-identity**: 1.15.0 → 1.16.1 (CVE fix)
+- **black**: 24.2.0 → 24.3.0 (CVE fix)
 
 ## Impact Assessment
 
