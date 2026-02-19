@@ -17,24 +17,55 @@ class ConversationMemory:
     """
 
     def __init__(self):
-        """Initialize Cosmos DB client and containers."""
-        self.client = CosmosClient(settings.cosmos_endpoint, settings.cosmos_key)
-        self.database = self.client.create_database_if_not_exists(
+        """Defer Cosmos DB connection to first use (lazy initialization).
+
+        Avoids eager network calls at import time / cold-start, which is
+        especially important for Azure Functions and unit-test environments.
+        """
+        self._client = None
+        self._database = None
+        self._state_container = None
+        self._registry_container = None
+
+    def _ensure_connected(self) -> None:
+        """Create Cosmos DB client and containers on first use."""
+        if self._client is not None:
+            return
+        self._client = CosmosClient(settings.cosmos_endpoint, settings.cosmos_key)
+        self._database = self._client.create_database_if_not_exists(
             settings.cosmos_database
         )
-
         # State container for conversation checkpoints
-        self.state_container = self.database.create_container_if_not_exists(
+        self._state_container = self._database.create_container_if_not_exists(
             id=settings.cosmos_container_state,
             partition_key=PartitionKey(path="/conversation_id"),
             default_ttl=604800,  # 7 days TTL for GDPR compliance
         )
-
         # Registry container for agent configurations
-        self.registry_container = self.database.create_container_if_not_exists(
+        self._registry_container = self._database.create_container_if_not_exists(
             id=settings.cosmos_container_registry,
             partition_key=PartitionKey(path="/topic"),
         )
+
+    @property
+    def client(self) -> CosmosClient:
+        self._ensure_connected()
+        return self._client
+
+    @property
+    def database(self):
+        self._ensure_connected()
+        return self._database
+
+    @property
+    def state_container(self):
+        self._ensure_connected()
+        return self._state_container
+
+    @property
+    def registry_container(self):
+        self._ensure_connected()
+        return self._registry_container
 
     def save_state(self, conversation_id: str, state: Dict[str, Any]) -> None:
         """
