@@ -1,15 +1,28 @@
 """
 Shopify integration tools for returns agent.
+
+All tools are synchronous so they can be dispatched via LangChain's
+synchronous ``tool.invoke()`` call inside agent nodes.
 """
 
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List
+
 import httpx
 from langchain_core.tools import tool
+
 from shared.config import settings
 
 
+def _shopify_headers() -> Dict[str, str]:
+    return {
+        "X-Shopify-Access-Token": settings.shopify_api_key,
+        "Content-Type": "application/json",
+    }
+
+
 @tool
-async def get_order(order_id: str) -> Dict[str, Any]:
+def get_order(order_id: str) -> Dict[str, Any]:
     """
     Retrieve order details from Shopify.
 
@@ -23,42 +36,37 @@ async def get_order(order_id: str) -> Dict[str, Any]:
         return {"error": "Shopify not configured"}
 
     url = f"{settings.shopify_shop_url}/admin/api/2024-01/orders/{order_id}.json"
-    headers = {
-        "X-Shopify-Access-Token": settings.shopify_api_key,
-        "Content-Type": "application/json",
-    }
 
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.get(url, headers=headers, timeout=30.0)
-            response.raise_for_status()
-            data = response.json()
-            order = data.get("order", {})
-
-            return {
-                "id": order.get("id"),
-                "order_number": order.get("order_number"),
-                "created_at": order.get("created_at"),
-                "total_price": order.get("total_price"),
-                "currency": order.get("currency"),
-                "financial_status": order.get("financial_status"),
-                "fulfillment_status": order.get("fulfillment_status"),
-                "line_items": [
-                    {
-                        "id": item.get("id"),
-                        "title": item.get("title"),
-                        "quantity": item.get("quantity"),
-                        "price": item.get("price"),
-                    }
-                    for item in order.get("line_items", [])
-                ],
-            }
-        except httpx.HTTPError as e:
-            return {"error": str(e)}
+    try:
+        response = httpx.get(url, headers=_shopify_headers(), timeout=30.0)
+        response.raise_for_status()
+        order = response.json().get("order", {})
+        return {
+            "id": order.get("id"),
+            "order_number": order.get("order_number"),
+            "created_at": order.get("created_at"),
+            "total_price": order.get("total_price"),
+            "currency": order.get("currency"),
+            "financial_status": order.get("financial_status"),
+            "fulfillment_status": order.get("fulfillment_status"),
+            "line_items": [
+                {
+                    "id": item.get("id"),
+                    "title": item.get("title"),
+                    "quantity": item.get("quantity"),
+                    "price": item.get("price"),
+                }
+                for item in order.get("line_items", [])
+            ],
+        }
+    except httpx.HTTPStatusError as e:
+        return {"error": f"HTTP {e.response.status_code}: {e.response.text[:200]}"}
+    except httpx.HTTPError as e:
+        return {"error": str(e)}
 
 
 @tool
-async def search_orders(customer_email: str, limit: int = 10) -> List[Dict[str, Any]]:
+def search_orders(customer_email: str, limit: int = 10) -> List[Dict[str, Any]]:
     """
     Search orders by customer email.
 
@@ -73,38 +81,32 @@ async def search_orders(customer_email: str, limit: int = 10) -> List[Dict[str, 
         return [{"error": "Shopify not configured"}]
 
     url = f"{settings.shopify_shop_url}/admin/api/2024-01/orders.json"
-    headers = {
-        "X-Shopify-Access-Token": settings.shopify_api_key,
-        "Content-Type": "application/json",
-    }
-
     params = {"email": customer_email, "limit": limit, "status": "any"}
 
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.get(
-                url, headers=headers, params=params, timeout=30.0
-            )
-            response.raise_for_status()
-            data = response.json()
-
-            return [
-                {
-                    "id": order.get("id"),
-                    "order_number": order.get("order_number"),
-                    "created_at": order.get("created_at"),
-                    "total_price": order.get("total_price"),
-                    "financial_status": order.get("financial_status"),
-                    "fulfillment_status": order.get("fulfillment_status"),
-                }
-                for order in data.get("orders", [])
-            ]
-        except httpx.HTTPError as e:
-            return [{"error": str(e)}]
+    try:
+        response = httpx.get(
+            url, headers=_shopify_headers(), params=params, timeout=30.0
+        )
+        response.raise_for_status()
+        return [
+            {
+                "id": order.get("id"),
+                "order_number": order.get("order_number"),
+                "created_at": order.get("created_at"),
+                "total_price": order.get("total_price"),
+                "financial_status": order.get("financial_status"),
+                "fulfillment_status": order.get("fulfillment_status"),
+            }
+            for order in response.json().get("orders", [])
+        ]
+    except httpx.HTTPStatusError as e:
+        return [{"error": f"HTTP {e.response.status_code}: {e.response.text[:200]}"}]
+    except httpx.HTTPError as e:
+        return [{"error": str(e)}]
 
 
 @tool
-async def create_refund(
+def create_refund(
     order_id: str, amount: float, reason: str = "customer_request"
 ) -> Dict[str, Any]:
     """
@@ -124,11 +126,6 @@ async def create_refund(
     url = (
         f"{settings.shopify_shop_url}/admin/api/2024-01/orders/{order_id}/refunds.json"
     )
-    headers = {
-        "X-Shopify-Access-Token": settings.shopify_api_key,
-        "Content-Type": "application/json",
-    }
-
     payload = {
         "refund": {
             "note": reason,
@@ -137,30 +134,29 @@ async def create_refund(
         }
     }
 
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(
-                url, json=payload, headers=headers, timeout=30.0
-            )
-            response.raise_for_status()
-            data = response.json()
-            refund = data.get("refund", {})
-
-            return {
-                "id": refund.get("id"),
-                "order_id": refund.get("order_id"),
-                "created_at": refund.get("created_at"),
-                "note": refund.get("note"),
-                "transactions": refund.get("transactions", []),
-            }
-        except httpx.HTTPError as e:
-            return {"error": str(e)}
+    try:
+        response = httpx.post(
+            url, json=payload, headers=_shopify_headers(), timeout=30.0
+        )
+        response.raise_for_status()
+        refund = response.json().get("refund", {})
+        return {
+            "id": refund.get("id"),
+            "order_id": refund.get("order_id"),
+            "created_at": refund.get("created_at"),
+            "note": refund.get("note"),
+            "transactions": refund.get("transactions", []),
+        }
+    except httpx.HTTPStatusError as e:
+        return {"error": f"HTTP {e.response.status_code}: {e.response.text[:200]}"}
+    except httpx.HTTPError as e:
+        return {"error": str(e)}
 
 
 @tool
-async def check_return_eligibility(order_id: str) -> Dict[str, Any]:
+def check_return_eligibility(order_id: str) -> Dict[str, Any]:
     """
-    Check if an order is eligible for return based on policy.
+    Check if an order is eligible for return based on the 30-day return policy.
 
     Args:
         order_id: Shopify order ID
@@ -168,28 +164,21 @@ async def check_return_eligibility(order_id: str) -> Dict[str, Any]:
     Returns:
         Eligibility status and details
     """
-    # Get order details first
-    order = await get_order(order_id)
+    order = get_order.invoke({"order_id": order_id})
 
     if "error" in order:
         return order
 
-    # Simple eligibility logic (customize based on actual policy)
-    from datetime import datetime, timedelta
-
     created_at = order.get("created_at", "")
     fulfillment_status = order.get("fulfillment_status", "")
 
-    # Check if order was created within last 30 days
     try:
         order_date = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-        days_since_order = (datetime.now(order_date.tzinfo) - order_date).days
-
+        days_since_order = (datetime.now(timezone.utc) - order_date).days
         eligible = days_since_order <= 30 and fulfillment_status in [
             "fulfilled",
             "partial",
         ]
-
         return {
             "eligible": eligible,
             "order_id": order_id,

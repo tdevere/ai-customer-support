@@ -1,50 +1,212 @@
 """
-Azure Functions HTTP trigger for webhook endpoint.
+Azure Functions HTTP triggers for the AAN Customer Support system.
+
+Routes
+------
+POST /api/conversations                          – Start a new conversation
+POST /api/conversations/{conversation_id}/messages – Reply in existing conversation
+GET  /api/conversations/{conversation_id}         – Get conversation state
+GET  /api/health                                  – Liveness check
+POST /api/webhook                                 – Legacy Intercom webhook (backward compat)
 """
 
-import azure.functions as func
 import json
 import logging
-from integrations.intercom import intercom_webhook
+import uuid
+
+import azure.functions as func
+from shared.telemetry import configure_telemetry, track_event
 
 app = func.FunctionApp()
+configure_telemetry()
+
+# ---------------------------------------------------------------------------
+# Conversations API
+# ---------------------------------------------------------------------------
+
+
+@app.route(
+    route="conversations",
+    methods=["POST"],
+    auth_level=func.AuthLevel.ANONYMOUS,
+)
+async def start_conversation(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    POST /api/conversations
+    Start a new conversation and return the first bot response.
+    """
+    try:
+        body = req.get_json()
+    except ValueError:
+        return func.HttpResponse(
+            json.dumps({"error": "Invalid JSON body"}),
+            status_code=400,
+            mimetype="application/json",
+        )
+
+    user_id = body.get("user_id")
+    message = body.get("message")
+    if not user_id or not message:
+        return func.HttpResponse(
+            json.dumps({"error": "user_id and message are required"}),
+            status_code=422,
+            mimetype="application/json",
+        )
+
+    conversation_id = str(uuid.uuid4())
+    context = body.get("context") or {}
+    context["channel"] = body.get("channel", "api")
+
+    from orchestrator.graph import run_aan_orchestrator
+
+    result = await run_aan_orchestrator(
+        conversation_id=conversation_id,
+        user_id=user_id,
+        message=message,
+        context=context,
+    )
+
+    track_event(
+        "conversation.started",
+        {"user_id": user_id, "channel": context.get("channel", "api")},
+    )
+    return func.HttpResponse(
+        json.dumps({"conversation_id": conversation_id, **result}),
+        status_code=201,
+        mimetype="application/json",
+    )
+
+
+@app.route(
+    route="conversations/{conversation_id}/messages",
+    methods=["POST"],
+    auth_level=func.AuthLevel.ANONYMOUS,
+)
+async def reply_to_conversation(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    POST /api/conversations/{conversation_id}/messages
+    Send a follow-up message in an existing conversation.
+    """
+    conversation_id = req.route_params.get("conversation_id")
+
+    try:
+        body = req.get_json()
+    except ValueError:
+        return func.HttpResponse(
+            json.dumps({"error": "Invalid JSON body"}),
+            status_code=400,
+            mimetype="application/json",
+        )
+
+    message = body.get("message")
+    if not message:
+        return func.HttpResponse(
+            json.dumps({"error": "message is required"}),
+            status_code=422,
+            mimetype="application/json",
+        )
+
+    from orchestrator.graph import run_aan_orchestrator
+
+    result = await run_aan_orchestrator(
+        conversation_id=conversation_id,
+        user_id=body.get("user_id", "anonymous"),
+        message=message,
+        context=body.get("context") or {},
+    )
+
+    track_event("conversation.replied", {"conversation_id": conversation_id})
+    return func.HttpResponse(
+        json.dumps({"conversation_id": conversation_id, **result}),
+        status_code=200,
+        mimetype="application/json",
+    )
+
+
+@app.route(
+    route="conversations/{conversation_id}",
+    methods=["GET"],
+    auth_level=func.AuthLevel.ANONYMOUS,
+)
+def get_conversation(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    GET /api/conversations/{conversation_id}
+    Retrieve the last persisted state of a conversation.
+    """
+    conversation_id = req.route_params.get("conversation_id")
+
+    from shared.memory import memory
+
+    state = memory.get_state(conversation_id)
+    if not state:
+        return func.HttpResponse(
+            json.dumps({"error": f"Conversation '{conversation_id}' not found"}),
+            status_code=404,
+            mimetype="application/json",
+        )
+
+    return func.HttpResponse(
+        json.dumps({"conversation_id": conversation_id, **state}),
+        status_code=200,
+        mimetype="application/json",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Health check
+# ---------------------------------------------------------------------------
+
+
+@app.route(route="health", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
+def health_check(req: func.HttpRequest) -> func.HttpResponse:
+    """GET /api/health — liveness check."""
+    return func.HttpResponse(
+        json.dumps({"status": "healthy", "service": "AAN Customer Support"}),
+        status_code=200,
+        mimetype="application/json",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Legacy Intercom webhook (kept for backward compatibility)
+# ---------------------------------------------------------------------------
 
 
 @app.route(route="webhook", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
 async def webhook_trigger(req: func.HttpRequest) -> func.HttpResponse:
     """
-    HTTP trigger for Intercom webhook.
+    POST /api/webhook — legacy Intercom webhook handler.
 
-    This function receives webhooks from Intercom and processes them
-    through the AAN orchestrator.
+    Validates HMAC signature and routes to the AAN orchestrator.
+    New integrations should use POST /api/conversations instead.
     """
     logging.info("Webhook trigger received")
 
     try:
-        # Get raw body and headers
         body = req.get_body()
         signature = req.headers.get("X-Hub-Signature-256") or req.headers.get(
             "X-Intercom-Signature"
         )
 
-        # Import FastAPI app's webhook handler
-        from integrations.intercom import validate_webhook_signature, settings
+        from integrations.intercom import validate_webhook_signature
+        from shared.config import settings
 
-        # Validate signature
         if not validate_webhook_signature(
             body, signature, settings.intercom_webhook_secret
         ):
             logging.warning("Invalid webhook signature")
-            return func.HttpResponse("Invalid signature", status_code=403)
+            return func.HttpResponse(
+                json.dumps({"error": "Invalid signature"}),
+                status_code=403,
+                mimetype="application/json",
+            )
 
-        # Parse payload
         payload = json.loads(body)
-
-        # Process webhook
         topic = payload.get("topic")
         data = payload.get("data", {})
         item = data.get("item", {})
 
+        track_event("webhook.received", {"topic": topic or "unknown"})
         logging.info(f"Processing webhook topic: {topic}")
 
         if topic in ["conversation.user.replied", "conversation.user.created"]:
@@ -52,7 +214,6 @@ async def webhook_trigger(req: func.HttpRequest) -> func.HttpResponse:
             user_message = item.get("conversation_message", {}).get("body", "")
             user_id = item.get("user", {}).get("id")
 
-            # Import and run orchestrator
             from orchestrator.graph import run_aan_orchestrator
 
             result = await run_aan_orchestrator(
@@ -64,12 +225,12 @@ async def webhook_trigger(req: func.HttpRequest) -> func.HttpResponse:
 
             logging.info(f'Orchestrator result: {result.get("status")}')
 
-            # Post response if successful
             if result.get("status") == "success":
                 from integrations.intercom import post_reply_to_intercom
 
                 await post_reply_to_intercom(
-                    conversation_id=conversation_id, message=result.get("message", "")
+                    conversation_id=conversation_id,
+                    message=result.get("message", ""),
                 )
             elif result.get("status") == "escalated":
                 from integrations.intercom import add_note_to_intercom
@@ -80,21 +241,15 @@ async def webhook_trigger(req: func.HttpRequest) -> func.HttpResponse:
                 )
 
         return func.HttpResponse(
-            json.dumps({"status": "ok"}), status_code=200, mimetype="application/json"
+            json.dumps({"status": "ok"}),
+            status_code=200,
+            mimetype="application/json",
         )
 
     except Exception as e:
         logging.error(f"Error processing webhook: {str(e)}")
         return func.HttpResponse(
-            json.dumps({"error": str(e)}), status_code=500, mimetype="application/json"
+            json.dumps({"error": str(e)}),
+            status_code=500,
+            mimetype="application/json",
         )
-
-
-@app.route(route="health", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
-def health_check(req: func.HttpRequest) -> func.HttpResponse:
-    """Health check endpoint."""
-    return func.HttpResponse(
-        json.dumps({"status": "healthy", "service": "AAN Customer Support"}),
-        status_code=200,
-        mimetype="application/json",
-    )

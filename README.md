@@ -61,16 +61,26 @@ aan-intercom-support/
 │   ├── graph.py          # LangGraph workflow
 │   ├── supervisor.py     # Topic classifier
 │   ├── verifier.py       # Confidence scorer
-│   └── escalator.py      # Human handoff
+│   ├── escalator.py      # Human handoff
+│   └── custom_answers.py # Hard-coded override layer
 ├── integrations/          # External service integrations
+│   ├── conversations.py  # Platform-agnostic REST API
 │   ├── intercom.py       # Webhook handler
 │   └── tools/            # Stripe, Jira, Shopify tools
 ├── shared/                # Shared utilities
 │   ├── config.py         # Configuration management
 │   ├── memory.py         # State persistence
-│   └── rag.py            # RAG knowledge base
-├── tests/                 # Comprehensive tests
+│   ├── rag.py            # RAG knowledge base
+│   └── telemetry.py      # Application Insights wrapper
+├── tests/                 # Comprehensive tests (287 tests, 100% coverage)
 ├── infra/                 # Terraform infrastructure
+│   ├── main.tf
+│   └── backend.tf        # Remote state backend (Azure Blob)
+├── examples/              # Runnable usage examples
+├── scripts/               # Developer tooling
+│   ├── test_local.ps1    # Full CI pipeline locally (Windows/PowerShell)
+│   ├── demo_local.py     # Mock server — demo without Azure credentials
+│   └── demo.ps1          # Guided 4-scene demo runner
 └── requirements.txt       # Python dependencies
 ```
 
@@ -94,9 +104,10 @@ cd ai-customer-support
 ### 2. Install Dependencies
 
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install uv
+uv pip install --system -r requirements.txt
 ```
 
 ### 3. Configure Environment
@@ -126,6 +137,9 @@ JIRA_API_TOKEN=your-jira-token
 JIRA_BASE_URL=https://your-company.atlassian.net
 SHOPIFY_API_KEY=your-shopify-key
 SHOPIFY_SHOP_URL=https://your-shop.myshopify.com
+
+# Monitoring (optional — telemetry is no-op when absent)
+APPINSIGHTS_CONNECTION_STRING=InstrumentationKey=your-key;...
 ```
 
 ### 4. Deploy Infrastructure
@@ -150,24 +164,67 @@ func azure functionapp publish func-aan-support-dev
 3. Subscribe to: `conversation.user.replied`, `conversation.user.created`
 4. Copy webhook secret to `.env`
 
+## 🎬 Running the Demo
+
+See every capability of the system **without any Azure credentials** using the local mock server.
+
+**Terminal 1** — start the mock server (keep running):
+
+```powershell
+.venv\Scripts\python.exe scripts/demo_local.py
+```
+
+**Terminal 2** — run the guided 4-scene demo:
+
+```powershell
+.\scripts\demo.ps1
+```
+
+Or start the server automatically:
+
+```powershell
+.\scripts\demo.ps1 -StartServer
+```
+
+Once running, the interactive Swagger UI is available at:
+
+```
+http://localhost:8000/docs
+```
+
+For the full demo walkthrough, recorded output, and manual `curl`/PowerShell examples,  
+see **[docs/DEMO.md](./docs/DEMO.md)**.
+
+---
+
 ## 🧪 Testing
 
 ### Run All Tests
 
 ```bash
+# Windows (PowerShell) — mirrors CI exactly
+.\scripts\test_local.ps1
+
+# Linux / macOS
 pytest tests/ -v
 ```
 
 ### Run with Coverage
 
 ```bash
-pytest tests/ --cov=. --cov-report=html
+pytest tests/ --cov=. --cov-report=html --cov-fail-under=90
 ```
 
-### Run Specific Test
+### Run Only a Specific Test File
 
 ```bash
 pytest tests/test_supervisor.py -v
+```
+
+### Type Checking
+
+```bash
+mypy shared/ orchestrator/ agents/ integrations/ --ignore-missing-imports
 ```
 
 ## 📝 Usage
@@ -230,7 +287,53 @@ result = await run_aan_orchestrator(
 print(result)
 ```
 
-## 📊 Monitoring
+## �️ Roadmap
+
+### ✅ Completed (as of 2026-02-19)
+
+| Capability | Detail |
+|---|---|
+| Multi-agent orchestration | LangGraph graph — classify → route → verify → respond/escalate |
+| Specialist agents | Billing (Stripe), Tech (Jira), Returns (Shopify) |
+| Platform-agnostic REST API | `POST /conversations`, `POST /conversations/{id}/messages`, `GET /conversations/{id}` |
+| Resolution tracking | `in_progress` → `resolved_assumed` / `resolved_confirmed` / `escalated` |
+| Custom-answers override layer | Hard-coded responses that short-circuit the LLM pipeline |
+| Azure Monitor telemetry | OpenTelemetry wrapper — no-op without App Insights |
+| X-Request-ID middleware | Trace ID on every API response |
+| Config-driven agent registry | Add a new specialist in <1 hour via `agents/registry.yaml` |
+| 292 tests / 100% coverage | Coverage gate enforced locally and in CI |
+| mypy type checking | Integrated in CI, Makefile, and `test_local.ps1` |
+| CI/CD hardened | All action versions pinned, Trivy scanning, coverage gate |
+| Dependabot | Weekly pip + GitHub Actions update PRs |
+| Terraform remote state | Azure Blob backend template in `infra/backend.tf` |
+| Local demo mode | Zero Azure credentials — `scripts/demo_local.py` + `demo.ps1` |
+| Docs | README, ARCHITECTURE, DEPLOYMENT, DEMO |
+
+### 🔜 Next — Production Go-Live (~3 hours)
+
+| Step | Owner | Est. time |
+|---|---|---|
+| Fill `local.settings.json` with real Azure creds | You | 1 h |
+| Run `infra/main.tf` (`terraform apply`) | You | 30 min |
+| Seed Azure AI Search knowledge base (`scripts/seed_knowledge_base.py`) | Next build | 2 h |
+| Set `AZURE_CREDENTIALS_DEV` / `AZURE_CREDENTIALS_PROD` GitHub secrets | You | 30 min |
+| Open PR: `copilot/add-adaptive-agent-network` → `main` | You | 5 min |
+
+### 🔭 Future
+
+| Feature | Priority |
+|---|---|
+| `scripts/seed_knowledge_base.py` — load support articles into Azure AI Search | High |
+| End-to-end integration tests against live Azure sandbox | High |
+| Performance benchmarking — validate p95 < 8 s | Medium |
+| Email channel integration (Azure Communication Services) | Medium |
+| Admin dashboard — conversation analytics + resolution rates | Medium |
+| Multi-language support (Azure Translator) | Low |
+| Proactive support (predict issues before customers report) | Low |
+
+---
+
+## �📊 Monitoring
 
 ### Application Insights
 

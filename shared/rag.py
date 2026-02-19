@@ -14,31 +14,54 @@ from shared.config import settings
 class RAGKnowledgeBase:
     """
     Manages knowledge retrieval using Azure AI Search with hybrid search.
+
+    Uses lazy initialisation: Azure Search and embedding clients are created
+    on the first actual retrieval/indexing call, not at import time.  This
+    prevents cold-start crashes in Azure Functions and test environments that
+    don't have Azure credentials configured.
     """
 
     def __init__(self, index_name: Optional[str] = None):
         """
-        Initialize RAG knowledge base.
+        Initialize RAG knowledge base (lazy – no network calls yet).
 
         Args:
             index_name: Azure Search index name (defaults to settings)
         """
         self.index_name = index_name or settings.azure_search_index
+        self._search_client: Optional[SearchClient] = None
+        self._embeddings: Optional[AzureOpenAIEmbeddings] = None
 
-        # Initialize Azure Search client
-        self.search_client = SearchClient(
+    def _ensure_connected(self) -> None:
+        """Create Azure Search client and embeddings model on first use."""
+        if self._search_client is not None:
+            return
+        if not settings.azure_search_endpoint or not settings.azure_search_key:
+            raise RuntimeError(
+                "Azure AI Search is not configured "
+                "(AZURE_SEARCH_ENDPOINT / AZURE_SEARCH_KEY missing)"
+            )
+        self._search_client = SearchClient(
             endpoint=settings.azure_search_endpoint,
             index_name=self.index_name,
             credential=AzureKeyCredential(settings.azure_search_key),
         )
-
-        # Initialize embeddings for vector search
-        self.embeddings = AzureOpenAIEmbeddings(
+        self._embeddings = AzureOpenAIEmbeddings(
             azure_endpoint=settings.azure_openai_endpoint,
             api_key=settings.azure_openai_api_key,
             api_version=settings.azure_openai_api_version,
             model="text-embedding-ada-002",
         )
+
+    @property
+    def search_client(self) -> SearchClient:
+        self._ensure_connected()
+        return self._search_client  # type: ignore[return-value]
+
+    @property
+    def embeddings(self) -> AzureOpenAIEmbeddings:
+        self._ensure_connected()
+        return self._embeddings  # type: ignore[return-value]
 
     def retrieve_context(
         self,

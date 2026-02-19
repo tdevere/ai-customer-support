@@ -73,8 +73,17 @@ Thumbs.db
 *.tfstate.*
 .terraform/
 .terraform.lock.hcl
+*.tfvars
+*.tfvars.json
+terraform.tfvars
+terraform.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
 
 # Temporary files
 tmp/
 temp/
 *.tmp
+demo_output.txt

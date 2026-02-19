@@ -12,12 +12,19 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://mock.openai.azure.com")
     monkeypatch.setenv("AZURE_OPENAI_API_KEY", "mock-api-key")
     monkeypatch.setenv("COSMOS_ENDPOINT", "https://mock.cosmos.azure.com")
-    monkeypatch.setenv("COSMOS_KEY", "mock-cosmos-key")
+    # Must be valid base64 — Cosmos SDK base64-decodes the key on first connection.
+    # Value decodes to "mock-cosmos-key-fortesting" (safe mock, never sent anywhere).
+    monkeypatch.setenv("COSMOS_KEY", "bW9jay1jb3Ntb3Mta2V5LWZvcnRlc3Rpbmc=")
     monkeypatch.setenv("AZURE_SEARCH_ENDPOINT", "https://mock.search.windows.net")
     monkeypatch.setenv("AZURE_SEARCH_KEY", "mock-search-key")
     monkeypatch.setenv("INTERCOM_ACCESS_TOKEN", "mock-intercom-token")
     monkeypatch.setenv("INTERCOM_WEBHOOK_SECRET", "mock-webhook-secret")
     monkeypatch.setenv("STRIPE_API_KEY", "mock-stripe-key")
+    monkeypatch.setenv("JIRA_EMAIL", "mock-jira@example.com")
+    monkeypatch.setenv("JIRA_PROJECT_KEY", "SUP")
+    monkeypatch.setenv("SHOPIFY_SHOP_URL", "https://mock.myshopify.com")
+    monkeypatch.setenv("AZURE_OPENAI_DEPLOYMENT_GPT4", "gpt-4o")
+    monkeypatch.setenv("AZURE_OPENAI_DEPLOYMENT_GPT4_MINI", "gpt-4o-mini")
     monkeypatch.setenv("ENVIRONMENT", "test")
 
 

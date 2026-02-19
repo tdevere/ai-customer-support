@@ -60,6 +60,9 @@ def create_tech_agent():
         """Execute Jira tools if needed (search tickets, create ticket)."""
         query = state["query"]
 
+        # Build a name→tool lookup for fast dispatch
+        tool_map = {t.name: t for t in jira_tools}
+
         system_prompt = """You are a technical support specialist with access to Jira.
 Analyze the customer's technical issue and determine if you need to:
 1. Search for existing Jira tickets about similar issues
@@ -81,16 +84,21 @@ Be thorough and professional. Only create tickets for genuine technical issues t
 
         response = llm_with_tools.invoke(messages)
 
-        # Store tool results if any
+        # Execute every tool the LLM requested
         tool_results = []
         if hasattr(response, "tool_calls") and response.tool_calls:
             for tool_call in response.tool_calls:
+                tool_name = tool_call.get("name")
+                tool_args = tool_call.get("args", {})
+                if tool_name in tool_map:
+                    try:
+                        result = tool_map[tool_name].invoke(tool_args)
+                    except Exception as exc:
+                        result = {"error": str(exc)}
+                else:
+                    result = {"error": f"Unknown tool: {tool_name}"}
                 tool_results.append(
-                    {
-                        "tool": tool_call.get("name"),
-                        "args": tool_call.get("args"),
-                        "result": "Tool execution placeholder",
-                    }
+                    {"tool": tool_name, "args": tool_args, "result": result}
                 )
 
         state["tool_results"] = tool_results

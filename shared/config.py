@@ -5,6 +5,7 @@ Loads settings from environment variables and Azure Key Vault.
 
 import os
 from typing import Optional
+from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
@@ -17,8 +18,13 @@ class Settings(BaseSettings):
     azure_openai_endpoint: str = os.getenv("AZURE_OPENAI_ENDPOINT", "")
     azure_openai_api_key: str = os.getenv("AZURE_OPENAI_API_KEY", "")
     azure_openai_api_version: str = "2024-02-15-preview"
-    azure_openai_deployment_gpt4: str = "gpt-4o"
-    azure_openai_deployment_gpt4_mini: str = "gpt-4o-mini"
+    # Deployment names vary by Azure subscription — override via env if yours differ.
+    azure_openai_deployment_gpt4: str = os.getenv(
+        "AZURE_OPENAI_DEPLOYMENT_GPT4", "gpt-4o"
+    )
+    azure_openai_deployment_gpt4_mini: str = os.getenv(
+        "AZURE_OPENAI_DEPLOYMENT_GPT4_MINI", "gpt-4o-mini"
+    )
 
     # Azure Cosmos DB
     cosmos_endpoint: str = os.getenv("COSMOS_ENDPOINT", "")
@@ -32,20 +38,29 @@ class Settings(BaseSettings):
     azure_search_key: str = os.getenv("AZURE_SEARCH_KEY", "")
     azure_search_index: str = "support_knowledge"
 
-    # Intercom
+    # Intercom (legacy – kept for backward compat; not required by conversations.py)
     intercom_access_token: str = os.getenv("INTERCOM_ACCESS_TOKEN", "")
     intercom_webhook_secret: str = os.getenv("INTERCOM_WEBHOOK_SECRET", "")
+
+    # Generic conversation API
+    support_api_key: str = os.getenv("SUPPORT_API_KEY", "")
+    # Leave blank to disable authentication (useful in dev / CI)
 
     # External Services
     stripe_api_key: str = os.getenv("STRIPE_API_KEY", "")
     jira_api_token: str = os.getenv("JIRA_API_TOKEN", "")
     jira_base_url: str = os.getenv("JIRA_BASE_URL", "")
+    # Jira Cloud REST API v3 requires Basic auth with email:api_token (base64-encoded).
+    # JIRA_EMAIL should be the Atlassian account email associated with the API token.
+    jira_email: str = os.getenv("JIRA_EMAIL", "")
+    jira_project_key: str = os.getenv("JIRA_PROJECT_KEY", "SUP")
     shopify_api_key: str = os.getenv("SHOPIFY_API_KEY", "")
     shopify_shop_url: str = os.getenv("SHOPIFY_SHOP_URL", "")
 
     # Application
     environment: str = os.getenv("ENVIRONMENT", "development")
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
+    appinsights_connection_string: str = os.getenv("APPINSIGHTS_CONNECTION_STRING", "")
     confidence_threshold: float = 0.7
     max_retry_attempts: int = 3
     request_timeout: int = 30
@@ -53,9 +68,7 @@ class Settings(BaseSettings):
     # Key Vault (optional)
     key_vault_url: Optional[str] = os.getenv("KEY_VAULT_URL")
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    model_config = ConfigDict(env_file=".env", case_sensitive=False)
 
 
 # Global settings instance

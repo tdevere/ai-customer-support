@@ -1,0 +1,157 @@
+# Custom Answers Override Layer
+#
+# These are hard-coded, high-confidence answers that short-circuit the LLM
+# pipeline entirely.  Use them for:
+#   - Pricing / legal statements that must be exact
+#   - Policies where a wrong answer would be costly
+#   - High-traffic FAQs that don't need an LLM round-trip
+#
+# Schema per entry
+# ----------------
+# id          : unique slug (used for analytics / audit)
+# topic       : matches an entry in agents/registry.yaml (billing, technical, returns, general)
+# patterns    : list of lowercase substrings – if ANY appear in the user message, the
+#               answer fires.  Matching is case-insensitive substring search.
+# answer      : the exact response text to return
+# confidence  : float 0–1 (defaults to 0.95)
+# enabled     : set to false to disable without deleting the entry
+
+custom_answers:
+
+  # ── Billing ──────────────────────────────────────────────────────────────
+
+  - id: "pricing_plans"
+    topic: "billing"
+    enabled: true
+    confidence: 0.99
+    patterns:
+      - "how much does it cost"
+      - "what is the price"
+      - "pricing plans"
+      - "how much is"
+      - "subscription cost"
+      - "monthly cost"
+      - "annual cost"
+    answer: >
+      Our subscription plans start at $29/month (Starter), $79/month (Pro),
+      and $199/month (Enterprise).  All plans include a 14-day free trial and
+      can be cancelled at any time.  Visit example.com/pricing for full
+      feature comparisons.
+
+  - id: "refund_policy"
+    topic: "billing"
+    enabled: true
+    confidence: 0.98
+    patterns:
+      - "refund policy"
+      - "can i get a refund"
+      - "money back guarantee"
+      - "money-back"
+      - "want my money back"
+      - "how do i get a refund"
+    answer: >
+      We offer a 30-day money-back guarantee on all plans, no questions asked.
+      To request a refund, email billing@example.com with your account email
+      and order number.  Refunds are processed within 5–7 business days.
+
+  - id: "payment_methods"
+    topic: "billing"
+    enabled: true
+    confidence: 0.97
+    patterns:
+      - "payment methods"
+      - "do you accept"
+      - "can i pay with"
+      - "visa"
+      - "mastercard"
+      - "paypal"
+      - "bank transfer"
+    answer: >
+      We accept Visa, Mastercard, American Express, and PayPal.
+      Enterprise customers may request invoice-based bank transfers – contact
+      billing@example.com to arrange.
+
+  # ── Returns ──────────────────────────────────────────────────────────────
+
+  - id: "return_window"
+    topic: "returns"
+    enabled: true
+    confidence: 0.98
+    patterns:
+      - "return policy"
+      - "how long to return"
+      - "return window"
+      - "days to return"
+      - "can i return"
+    answer: >
+      Physical products may be returned within 30 days of delivery in their
+      original packaging.  To initiate a return, visit example.com/returns
+      or reply here with your order number and we will send a prepaid label.
+
+  # ── Operations / General ─────────────────────────────────────────────────
+
+  - id: "support_hours"
+    topic: "general"
+    enabled: true
+    confidence: 0.99
+    patterns:
+      - "support hours"
+      - "when are you open"
+      - "business hours"
+      - "what time do you open"
+      - "office hours"
+    answer: >
+      Our human support team is available Monday–Friday, 9 am–6 pm EST.
+      Outside those hours our AI assistant is available 24/7 and can handle
+      most requests instantly.
+
+  - id: "contact_support"
+    topic: "general"
+    enabled: true
+    confidence: 0.97
+    patterns:
+      - "how do i contact support"
+      - "contact you"
+      - "reach support"
+      - "speak to a human"
+      - "talk to a person"
+      - "real person"
+    answer: >
+      You can reach our support team at support@example.com, or use the chat
+      widget on any page.  For urgent billing issues call +1-800-EXAMPLE.
+      If you'd like to escalate to a human agent right now, just say "escalate"
+      and I'll hand you over immediately.
+
+  # ── Technical ────────────────────────────────────────────────────────────
+
+  - id: "api_documentation"
+    topic: "technical"
+    enabled: true
+    confidence: 0.96
+    patterns:
+      - "api documentation"
+      - "api docs"
+      - "developer docs"
+      - "rest api"
+      - "openapi"
+      - "swagger"
+    answer: >
+      Full API documentation is available at docs.example.com/api.
+      We provide an OpenAPI 3.0 spec, SDKs for Python, Node.js, and Go,
+      and interactive examples in our developer portal.
+
+  - id: "system_status"
+    topic: "technical"
+    enabled: true
+    confidence: 0.99
+    patterns:
+      - "is the system down"
+      - "outage"
+      - "system status"
+      - "status page"
+      - "service status"
+      - "is your site down"
+    answer: >
+      Current system status is available at status.example.com – updates are
+      posted there in real time.  You can also subscribe to status alerts via
+      email or SMS from that page.

@@ -1,0 +1,44 @@
+version: 2
+
+updates:
+  # Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+    ignore:
+      # LangChain ecosystem moves fast — pin major versions deliberately
+      - dependency-name: "langchain*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "langgraph*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      opentelemetry:
+        patterns:
+          - "opentelemetry*"
+          - "azure-monitor-opentelemetry*"
+      azure-sdk:
+        patterns:
+          - "azure-*"
+      langchain:
+        patterns:
+          - "langchain*"
+          - "langgraph*"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"

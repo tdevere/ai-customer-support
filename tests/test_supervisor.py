@@ -63,3 +63,28 @@ def test_get_agent_configs(classifier):
     assert len(configs) >= 1
     assert all("topic" in c for c in configs)
     assert all("name" in c for c in configs)
+
+
+def test_parse_classification_primary_malformed_confidence(classifier):
+    """Malformed PRIMARY confidence falls back to 0.5."""
+    result = classifier._parse_classification(
+        "PRIMARY: billing(not_a_float)\nSECONDARY:"
+    )
+
+    assert result["primary_topic"] == "billing"
+    assert result["primary_confidence"] == 0.5
+
+
+def test_parse_classification_secondary_malformed_confidence(classifier):
+    """Malformed SECONDARY confidence falls back to 0.3."""
+    result = classifier._parse_classification(
+        "PRIMARY: billing (0.8)\nSECONDARY: technical(bad_conf)"
+    )
+
+    assert "technical" in result["secondary_topics"]
+    # The secondary confidence fallback is 0.3
+    secondary_entry = next(
+        (t for t in result["all_topics"] if t["topic"] == "technical"), None
+    )
+    assert secondary_entry is not None
+    assert secondary_entry["confidence"] == 0.3

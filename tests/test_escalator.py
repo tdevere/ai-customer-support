@@ -78,3 +78,32 @@ def test_suggest_tags(escalator):
     assert "escalated" in tags
     assert "attempted_billing" in tags
     assert len(tags) > 0
+
+
+def test_escalate_with_critique_in_summary(escalator):
+    """Critique key in verification_result is included in the escalation summary."""
+    result = escalator.escalate(
+        conversation_id="test-critique",
+        query="Billing dispute",
+        attempted_responses=[],
+        verification_result={
+            "final_confidence": 0.25,
+            "grounded": "no",
+            "concerns": ["Low confidence"],
+            "critique": "Response lacked specific details",
+        },
+    )
+
+    assert result["status"] == "escalated"
+    assert "Response lacked specific details" in result["summary"]
+
+
+def test_suggest_tags_marks_incomplete_when_complete_no(escalator):
+    """'incomplete' tag is added when verification shows complete='no'."""
+    tags = escalator._suggest_tags(
+        query="Test query",
+        attempted_responses=[],
+        verification={"final_confidence": 0.8, "complete": "no"},
+    )
+
+    assert "incomplete" in tags
