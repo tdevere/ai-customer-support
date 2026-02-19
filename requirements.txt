@@ -28,7 +28,7 @@ requests==2.32.4
 
 # Vector Store / RAG
 azure-search-documents==11.4.0
-tiktoken==0.6.0
+tiktoken==0.7.0
 
 # Utilities
 python-dotenv==1.0.1
